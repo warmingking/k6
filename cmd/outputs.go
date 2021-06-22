@@ -36,8 +36,6 @@ import (
 	"go.k6.io/k6/output/influxdb"
 	"go.k6.io/k6/output/json"
 	"go.k6.io/k6/output/statsd"
-
-	"github.com/k6io/xk6-output-kafka/pkg/kafka"
 )
 
 // TODO: move this to an output sub-module after we get rid of the old collectors?
@@ -47,13 +45,7 @@ func getAllOutputConstructors() (map[string]func(output.Params) (output.Output, 
 		"json":     json.New,
 		"cloud":    cloud.New,
 		"influxdb": influxdb.New,
-		"kafka": func(params output.Params) (output.Output, error) {
-			params.Logger.Warn("The kafka output is deprecated, and will be removed in a future k6 version. " +
-				"Please use the new xk6 kafka output extension instead. " +
-				"It can be found at https://github.com/k6io/xk6-output-kafka.")
-			return kafka.New(params)
-		},
-		"statsd": statsd.New,
+		"statsd":   statsd.New,
 		"datadog": func(params output.Params) (output.Output, error) {
 			params.Logger.Warn("The datadog output is deprecated, and will be removed in a future k6 version. " +
 				"Please use the statsd output with env variable K6_STATSD_ENABLE_TAGS=true instead.")
