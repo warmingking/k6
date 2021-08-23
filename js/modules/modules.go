@@ -119,10 +119,19 @@ type InstanceCore interface {
 	GetState() *lib.State
 
 	// GetRuntime returns the goja.Runtime for the current VU
+	// you need to call GetRuntime if you've called YieldRuntime before returning to goja or wanting to use the runtime
+	// for anything
 	GetRuntime() *goja.Runtime
 
 	// sealing field will help probably with pointing users that they just need to embed this in their Instance
 	// implementations
+
+	// YieldRuntime yields the runtime and lets other use it. it panics if yielded before you get it back
+	YieldRuntime()
+
+	// GetRuntimeWithReturn returns an exclusive runtime with a function to be called when it should be returned
+	// this exists as in the same module we might need the runtime exclusively for an async execution
+	GetRuntimeWithReturn() (*goja.Runtime, func())
 }
 
 // Exports is representation of ESM exports of a module

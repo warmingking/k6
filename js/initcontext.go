@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/dop251/goja"
 	"github.com/sirupsen/logrus"
@@ -65,8 +66,9 @@ const openCantBeUsedOutsideInitContextMsg = `The "open()" function is only avail
 // TODO: refactor most/all of this state away, use common.InitEnvironment instead
 type InitContext struct {
 	// Bound runtime; used to instantiate objects.
-	runtime  *goja.Runtime
-	compiler *compiler.Compiler
+	runtime      *goja.Runtime
+	runtimeMutex *sync.Mutex
+	compiler     *compiler.Compiler
 
 	// Pointer to a context that bridged modules are invoked with.
 	ctxPtr *context.Context
@@ -92,6 +94,7 @@ func NewInitContext(
 ) *InitContext {
 	return &InitContext{
 		runtime:           rt,
+		runtimeMutex:      new(sync.Mutex),
 		compiler:          c,
 		ctxPtr:            ctxPtr,
 		filesystems:       filesystems,
@@ -115,8 +118,9 @@ func newBoundInitContext(base *InitContext, ctxPtr *context.Context, rt *goja.Ru
 		}
 	}
 	return &InitContext{
-		runtime: rt,
-		ctxPtr:  ctxPtr,
+		runtime:      rt,
+		runtimeMutex: new(sync.Mutex),
+		ctxPtr:       ctxPtr,
 
 		filesystems: base.filesystems,
 		pwd:         base.pwd,
@@ -154,6 +158,9 @@ func (i *InitContext) Require(arg string) goja.Value {
 type moduleInstanceCoreImpl struct {
 	ctxPtr *context.Context
 	// we can technically put lib.State here as well as anything else
+	yielded bool
+	rt      *goja.Runtime
+	rtMutex *sync.Mutex
 }
 
 func (m *moduleInstanceCoreImpl) GetContext() context.Context {
@@ -169,7 +176,21 @@ func (m *moduleInstanceCoreImpl) GetState() *lib.State {
 }
 
 func (m *moduleInstanceCoreImpl) GetRuntime() *goja.Runtime {
-	return common.GetRuntime(*m.ctxPtr) // TODO thread it correctly instead
+	if m.yielded {
+		m.rtMutex.Lock()
+		m.yielded = false
+	}
+	return m.rt
+}
+
+func (m *moduleInstanceCoreImpl) YieldRuntime() {
+	m.yielded = true
+	m.rtMutex.Unlock()
+}
+
+func (m *moduleInstanceCoreImpl) GetRuntimeWithReturn() (*goja.Runtime, func()) {
+	m.rtMutex.Lock()
+	return m.rt, m.rtMutex.Unlock
 }
 
 func toESModuleExports(exp modules.Exports) interface{} {
@@ -201,7 +222,7 @@ func (i *InitContext) requireModule(name string) (goja.Value, error) {
 		return nil, fmt.Errorf("unknown module: %s", name)
 	}
 	if modV2, ok := mod.(modules.IsModuleV2); ok {
-		instance := modV2.NewModuleInstance(&moduleInstanceCoreImpl{ctxPtr: i.ctxPtr})
+		instance := modV2.NewModuleInstance(&moduleInstanceCoreImpl{ctxPtr: i.ctxPtr, rt: i.runtime, rtMutex: i.runtimeMutex})
 		return i.runtime.ToValue(toESModuleExports(instance.GetExports())), nil
 	}
 	if perInstance, ok := mod.(modules.HasModuleInstancePerVU); ok {

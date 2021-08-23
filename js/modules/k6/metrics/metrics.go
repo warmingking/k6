@@ -82,6 +82,8 @@ func (mi *ModuleInstance) newMetric(call goja.ConstructorCall, t stats.MetricTyp
 		return nil, err
 	}
 
+	mi.YieldRuntime()
+	rt = mi.GetRuntime()
 	return v.ToObject(rt), nil
 }
 

@@ -97,6 +97,7 @@ func NewBundle(
 		CompatibilityMode: compatMode,
 		exports:           make(map[string]goja.Callable),
 	}
+	bundle.BaseInitContext.runtimeMutex.Lock()
 	if err = bundle.instantiate(logger, rt, bundle.BaseInitContext, 0); err != nil {
 		return nil, err
 	}
@@ -134,6 +135,7 @@ func NewBundleFromArchive(logger logrus.FieldLogger, arc *lib.Archive, rtOpts li
 	initctx := NewInitContext(logger, rt, c, compatMode,
 		new(context.Context), arc.Filesystems, arc.PwdURL)
 
+	initctx.runtimeMutex.Lock()
 	env := arc.Env
 	if env == nil {
 		// Older archives (<=0.20.0) don't have an "env" property
@@ -245,6 +247,7 @@ func (b *Bundle) Instantiate(logger logrus.FieldLogger, vuID uint64) (bi *Bundle
 	// runtime, but no state, to allow module-provided types to function within the init context.
 	rt := goja.New()
 	init := newBoundInitContext(b.BaseInitContext, ctxPtr, rt)
+	init.runtimeMutex.Lock()
 	if err := b.instantiate(logger, rt, init, vuID); err != nil {
 		return nil, err
 	}
