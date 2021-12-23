@@ -74,15 +74,15 @@ func getConvertCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := defaultFs.Open(filePath)
+			harFile, err := defaultFS.Afero().Open(filePath)
 			if err != nil {
 				return err
 			}
-			h, err := har.Decode(r)
+			decodedHAR, err := har.Decode(harFile)
 			if err != nil {
 				return err
 			}
-			if err = r.Close(); err != nil {
+			if err = harFile.Close(); err != nil {
 				return err
 			}
 
@@ -102,7 +102,7 @@ func getConvertCmd() *cobra.Command {
 			}
 
 			// TODO: refactor...
-			script, err := har.Convert(h, options, minSleep, maxSleep, enableChecks,
+			script, err := har.Convert(decodedHAR, options, minSleep, maxSleep, enableChecks,
 				returnOnFailedCheck, threshold, nobatch, correlate, only, skip)
 			if err != nil {
 				return err
@@ -114,17 +114,17 @@ func getConvertCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				f, err := defaultFs.Create(convertOutput)
+				outputFile, err := defaultFS.Afero().Create(convertOutput)
 				if err != nil {
 					return err
 				}
-				if _, err := f.WriteString(script); err != nil {
+				if _, err := outputFile.WriteString(script); err != nil {
 					return err
 				}
-				if err := f.Sync(); err != nil {
+				if err := outputFile.Sync(); err != nil {
 					return err
 				}
-				if err := f.Close(); err != nil {
+				if err := outputFile.Close(); err != nil {
 					return err
 				}
 			}

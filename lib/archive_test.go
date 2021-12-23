@@ -127,10 +127,10 @@ func diffFilesystemsDir(t *testing.T, first, second fsext.FS, dirname string) {
 			diffFilesystemsDir(t, first, second, path)
 			continue
 		}
-		firstData, err := afero.ReadFile(first.Afero(), path)
+		firstData, err := first.ReadFile(path)
 		require.NoError(t, err, path)
 
-		secondData, err := afero.ReadFile(second.Afero(), path)
+		secondData, err := second.ReadFile(path)
 		require.NoError(t, err, path)
 
 		assert.Equal(t, firstData, secondData, path)

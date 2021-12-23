@@ -86,6 +86,8 @@ func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) 
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
+		case fsext.FS:
+			fs = opt
 		case afero.Fs:
 			fs = fsext.NewFS(opt)
 		case lib.RuntimeOptions:

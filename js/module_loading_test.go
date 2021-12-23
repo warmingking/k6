@@ -31,6 +31,7 @@ import (
 	"gopkg.in/guregu/null.v3"
 
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
@@ -293,8 +294,9 @@ func TestLoadGlobalVarsAreNotSharedBetweenVUs(t *testing.T) {
 func TestLoadCycle(t *testing.T) {
 	t.Parallel()
 	// This is mostly the example from https://hacks.mozilla.org/2018/03/es-modules-a-cartoon-deep-dive/
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, "/counter.js", []byte(`
+	inMemoryFS := fsext.NewInMemoryFS()
+
+	require.NoError(t, inMemoryFS.WriteFile("/counter.js", []byte(`
 			let message = require("./main.js").message;
 			exports.count = 5;
 			export function a() {
@@ -302,7 +304,7 @@ func TestLoadCycle(t *testing.T) {
 			}
 	`), os.ModePerm))
 
-	require.NoError(t, afero.WriteFile(fs, "/main.js", []byte(`
+	require.NoError(t, inMemoryFS.WriteFile("/main.js", []byte(`
 			let counter = require("./counter.js");
 			let count = counter.count;
 			let a = counter.a;
@@ -319,18 +321,18 @@ func TestLoadCycle(t *testing.T) {
 				}
 			}
 	`), os.ModePerm))
-	data, err := afero.ReadFile(fs, "/main.js")
+	data, err := inMemoryFS.ReadFile("/main.js")
 	require.NoError(t, err)
-	r1, err := getSimpleRunner(t, "/main.js", string(data), fs, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
+	runner1, err := getSimpleRunner(t, "/main.js", string(data), inMemoryFS, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
 	require.NoError(t, err)
 
-	arc := r1.MakeArchive()
+	arc := runner1.MakeArchive()
 	registry := metrics.NewRegistry()
 	builtinMetrics := metrics.RegisterBuiltinMetrics(registry)
 	r2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
 	require.NoError(t, err)
 
-	runners := map[string]*Runner{"Source": r1, "Archive": r2}
+	runners := map[string]*Runner{"Source": runner1, "Archive": r2}
 	for name, r := range runners {
 		r := r
 		t.Run(name, func(t *testing.T) {
@@ -352,8 +354,9 @@ func TestLoadCycleBinding(t *testing.T) {
 	t.Parallel()
 	// This is mostly the example from
 	// http://2ality.com/2015/07/es6-module-exports.html#why-export-bindings
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, "/a.js", []byte(`
+	inMemoryFS := fsext.NewInMemoryFS()
+
+	require.NoError(t, inMemoryFS.WriteFile("/a.js", []byte(`
 		import {bar} from './b.js';
 		export function foo(a) {
 				if (a !== undefined) {
@@ -363,7 +366,7 @@ func TestLoadCycleBinding(t *testing.T) {
 		}
 	`), os.ModePerm))
 
-	require.NoError(t, afero.WriteFile(fs, "/b.js", []byte(`
+	require.NoError(t, inMemoryFS.WriteFile("/b.js", []byte(`
 		import {foo} from './a.js';
 		export function bar(a) {
 				if (a !== undefined) {
@@ -386,7 +389,7 @@ func TestLoadCycleBinding(t *testing.T) {
 					throw new Error("Wrong value of bar() "+ barMessage);
 				}
 			}
-		`, fs, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
+		`, inMemoryFS, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()
@@ -415,9 +418,9 @@ func TestLoadCycleBinding(t *testing.T) {
 
 func TestBrowserified(t *testing.T) {
 	t.Parallel()
-	fs := afero.NewMemMapFs()
-	//nolint: lll
-	require.NoError(t, afero.WriteFile(fs, "/browserified.js", []byte(`
+	inMemoryFS := fsext.NewInMemoryFS()
+
+	require.NoError(t, inMemoryFS.WriteFile("/browserified.js", []byte(`
 		(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.npmlibs = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 		module.exports.A = function () {
 			return "a";
@@ -454,7 +457,7 @@ func TestBrowserified(t *testing.T) {
 					throw new Error("bravo.B() != 'b'    (" + bravo.B() + ") != 'b'");
 				}
 			}
-		`, fs, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
+		`, inMemoryFS, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()
@@ -483,7 +486,9 @@ func TestBrowserified(t *testing.T) {
 
 func TestLoadingUnexistingModuleDoesntPanic(t *testing.T) {
 	t.Parallel()
-	fs := afero.NewMemMapFs()
+
+	inMemoryFS := fsext.NewInMemoryFS()
+
 	data := `var b;
 			try {
 				b = eval("require('buffer')");
@@ -495,11 +500,11 @@ func TestLoadingUnexistingModuleDoesntPanic(t *testing.T) {
 					throw new Error("wrong b "+ JSON.stringify(b));
 				}
 			}`
-	require.NoError(t, afero.WriteFile(fs, "/script.js", []byte(data), 0o644))
-	r1, err := getSimpleRunner(t, "/script.js", data, fs)
+	require.NoError(t, inMemoryFS.WriteFile("/script.js", []byte(data), 0o644))
+	runner1, err := getSimpleRunner(t, "/script.js", data, inMemoryFS)
 	require.NoError(t, err)
 
-	arc := r1.MakeArchive()
+	arc := runner1.MakeArchive()
 	buf := &bytes.Buffer{}
 	require.NoError(t, arc.Write(buf))
 	arc, err = lib.ReadArchive(buf)
@@ -509,7 +514,7 @@ func TestLoadingUnexistingModuleDoesntPanic(t *testing.T) {
 	r2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
 	require.NoError(t, err)
 
-	runners := map[string]*Runner{"Source": r1, "Archive": r2}
+	runners := map[string]*Runner{"Source": runner1, "Archive": r2}
 	for name, r := range runners {
 		r := r
 		t.Run(name, func(t *testing.T) {
@@ -529,14 +534,15 @@ func TestLoadingUnexistingModuleDoesntPanic(t *testing.T) {
 
 func TestLoadingSourceMapsDoesntErrorOut(t *testing.T) {
 	t.Parallel()
-	fs := afero.NewMemMapFs()
+
+	inMemoryFS := fsext.NewInMemoryFS()
 	data := `exports.default = function() {}
 //# sourceMappingURL=test.min.js.map`
-	require.NoError(t, afero.WriteFile(fs, "/script.js", []byte(data), 0o644))
-	r1, err := getSimpleRunner(t, "/script.js", data, fs)
+	require.NoError(t, inMemoryFS.WriteFile("/script.js", []byte(data), 0o644))
+	runner1, err := getSimpleRunner(t, "/script.js", data, inMemoryFS)
 	require.NoError(t, err)
 
-	arc := r1.MakeArchive()
+	arc := runner1.MakeArchive()
 	buf := &bytes.Buffer{}
 	require.NoError(t, arc.Write(buf))
 	arc, err = lib.ReadArchive(buf)
@@ -546,7 +552,7 @@ func TestLoadingSourceMapsDoesntErrorOut(t *testing.T) {
 	r2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
 	require.NoError(t, err)
 
-	runners := map[string]*Runner{"Source": r1, "Archive": r2}
+	runners := map[string]*Runner{"Source": runner1, "Archive": r2}
 	for name, r := range runners {
 		r := r
 		t.Run(name, func(t *testing.T) {

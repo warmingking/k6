@@ -28,9 +28,9 @@ import (
 	"testing"
 
 	"github.com/pmezard/go-difflib/difflib"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.k6.io/k6/lib/fsext"
 )
 
 const testHAR = `
@@ -131,9 +131,9 @@ func TestIntegrationConvertCmd(t *testing.T) {
 		expectedTestPlan, err := ioutil.ReadFile("testdata/example.js")
 		require.NoError(t, err)
 
-		defaultFs = afero.NewMemMapFs()
+		defaultFS = fsext.NewInMemoryFS()
 
-		err = afero.WriteFile(defaultFs, harFile, har, 0o644)
+		err = defaultFS.WriteFile(harFile, har, 0o644)
 		require.NoError(t, err)
 
 		buf := &bytes.Buffer{}
@@ -176,8 +176,8 @@ func TestIntegrationConvertCmd(t *testing.T) {
 	t.Run("Stdout", func(t *testing.T) {
 		harFile, err := filepath.Abs("stdout.har")
 		require.NoError(t, err)
-		defaultFs = afero.NewMemMapFs()
-		err = afero.WriteFile(defaultFs, harFile, []byte(testHAR), 0o644)
+		defaultFS = fsext.NewInMemoryFS()
+		err = defaultFS.WriteFile(harFile, []byte(testHAR), 0o644)
 		assert.NoError(t, err)
 
 		buf := &bytes.Buffer{}
@@ -191,8 +191,9 @@ func TestIntegrationConvertCmd(t *testing.T) {
 	t.Run("Output file", func(t *testing.T) {
 		harFile, err := filepath.Abs("output.har")
 		require.NoError(t, err)
-		defaultFs = afero.NewMemMapFs()
-		err = afero.WriteFile(defaultFs, harFile, []byte(testHAR), 0o644)
+		defaultFS = fsext.NewInMemoryFS()
+
+		err = defaultFS.WriteFile(harFile, []byte(testHAR), 0o644)
 		assert.NoError(t, err)
 
 		convertCmd := getConvertCmd()
@@ -204,7 +205,7 @@ func TestIntegrationConvertCmd(t *testing.T) {
 		err = convertCmd.RunE(convertCmd, []string{harFile})
 		assert.NoError(t, err)
 
-		output, err := afero.ReadFile(defaultFs, "/output.js")
+		output, err := defaultFS.ReadFile("/output.js")
 		assert.NoError(t, err)
 		assert.Equal(t, testHARConvertResult, string(output))
 	})
