@@ -26,12 +26,12 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/loader"
@@ -318,15 +318,16 @@ func testRuntimeOptionsCase(t *testing.T, tc runtimeOptionsTestCase) {
 	}
 	fmt.Fprint(jsCode, "}")
 
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, "/script.js", jsCode.Bytes(), 0o644))
+	inMemoryFS := fsext.NewInMemoryFS()
+	require.NoError(t, inMemoryFS.WriteFile("/script.js", jsCode.Bytes(), 0o644))
+
 	registry := metrics.NewRegistry()
 	builtinMetrics := metrics.RegisterBuiltinMetrics(registry)
 	runner, err := newRunner(
 		testutils.NewLogger(t),
 		&loader.SourceData{Data: jsCode.Bytes(), URL: &url.URL{Path: "/script.js", Scheme: "file"}},
 		typeJS,
-		map[string]afero.Fs{"file": fs},
+		map[string]fsext.FS{"file": inMemoryFS},
 		rtOpts,
 		builtinMetrics,
 		registry,

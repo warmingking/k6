@@ -115,8 +115,8 @@ func TestClient(t *testing.T) {
 		initEnv := &common.InitEnvironment{
 			Logger: logrus.New(),
 			CWD:    &url.URL{Path: cwd},
-			FileSystems: map[string]afero.Fs{
-				"file": fs,
+			FileSystems: map[string]fsext.FS{
+				"file": fsext.NewFS(fs),
 			},
 		}
 

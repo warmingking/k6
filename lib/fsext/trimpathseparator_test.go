@@ -33,7 +33,7 @@ func TestTrimAferoPathSeparatorFs(t *testing.T) {
 	m := afero.NewMemMapFs()
 	fs := NewTrimFilePathSeparatorFs(m)
 	expecteData := []byte("something")
-	err := afero.WriteFile(fs, filepath.FromSlash("/path/to/somewhere"), expecteData, 0644)
+	err := afero.WriteFile(fs, filepath.FromSlash("/path/to/somewhere"), expecteData, 0o644)
 	require.NoError(t, err)
 	data, err := afero.ReadFile(m, "/path/to/somewhere")
 	require.Error(t, err)
@@ -44,7 +44,7 @@ func TestTrimAferoPathSeparatorFs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expecteData, data)
 
-	err = afero.WriteFile(fs, filepath.FromSlash("path/without/separtor"), expecteData, 0644)
+	err = afero.WriteFile(fs, filepath.FromSlash("path/without/separtor"), expecteData, 0o644)
 	require.Error(t, err)
 	require.True(t, os.IsNotExist(err))
 }

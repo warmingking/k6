@@ -84,7 +84,7 @@ type Archive struct {
 	Pwd    string   `json:"pwd"` // only for json
 	PwdURL *url.URL `json:"-"`
 
-	Filesystems map[string]afero.Fs `json:"-"`
+	Filesystems map[string]fsext.FS `json:"-"`
 
 	// Environment variables
 	Env map[string]string `json:"env"`
@@ -95,13 +95,16 @@ type Archive struct {
 	Goos      string `json:"goos"`
 }
 
-func (arc *Archive) getFs(name string) afero.Fs {
+func (arc *Archive) getFs(name string) fsext.FS {
 	fs, ok := arc.Filesystems[name]
 	if !ok {
-		fs = afero.NewMemMapFs()
+		a := afero.NewMemMapFs()
 		if name == "file" {
-			fs = newNormalizedFs(fs)
+			a = newNormalizedFs(a)
 		}
+
+		fs = fsext.NewFS(a)
+
 		arc.Filesystems[name] = fs
 	}
 
@@ -132,7 +135,7 @@ func (arc *Archive) loadMetadataJSON(data []byte) (err error) {
 // ReadArchive reads an archive created by Archive.Write from a reader.
 func ReadArchive(in io.Reader) (*Archive, error) {
 	r := tar.NewReader(in)
-	arc := &Archive{Filesystems: make(map[string]afero.Fs, 2)}
+	arc := &Archive{Filesystems: make(map[string]fsext.FS, 2)}
 	// initialize both fses
 	_ = arc.getFs("https")
 	_ = arc.getFs("file")
@@ -185,11 +188,11 @@ func ReadArchive(in io.Reader) (*Archive, error) {
 		case "https", "file":
 			fs := arc.getFs(pfx)
 			name = filepath.FromSlash(name)
-			err = afero.WriteFile(fs, name, data, os.FileMode(hdr.Mode))
+			err = fs.WriteFile(name, data, os.FileMode(hdr.Mode))
 			if err != nil {
 				return nil, err
 			}
-			err = fs.Chtimes(name, hdr.AccessTime, hdr.ModTime)
+			err = fs.Afero().Chtimes(name, hdr.AccessTime, hdr.ModTime)
 			if err != nil {
 				return nil, err
 			}
@@ -203,7 +206,7 @@ func ReadArchive(in io.Reader) (*Archive, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = afero.WriteFile(arc.getFs(scheme), pathOnFs, arc.Data, 0644) // TODO fix the mode ?
+	err = arc.getFs(scheme).WriteFile(pathOnFs, arc.Data, 0o644) // TODO fix the mode ?
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +254,7 @@ func (arc *Archive) Write(out io.Writer) error {
 	normalizeAndAnonymizeURL(metaArc.PwdURL)
 	metaArc.Filename = getURLtoString(metaArc.FilenameURL)
 	metaArc.Pwd = getURLtoString(metaArc.PwdURL)
-	var actualDataPath, err = url.PathUnescape(path.Join(getURLPathOnFs(metaArc.FilenameURL)))
+	actualDataPath, err := url.PathUnescape(path.Join(getURLPathOnFs(metaArc.FilenameURL)))
 	if err != nil {
 		return err
 	}
@@ -262,7 +265,7 @@ func (arc *Archive) Write(out io.Writer) error {
 	}
 	_ = w.WriteHeader(&tar.Header{
 		Name:     "metadata.json",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     int64(len(metadata)),
 		ModTime:  now,
 		Typeflag: tar.TypeReg,
@@ -273,7 +276,7 @@ func (arc *Archive) Write(out io.Writer) error {
 
 	_ = w.WriteHeader(&tar.Header{
 		Name:     "data",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     int64(len(arc.Data)),
 		ModTime:  now,
 		Typeflag: tar.TypeReg,
@@ -286,8 +289,9 @@ func (arc *Archive) Write(out io.Writer) error {
 		if !ok {
 			continue
 		}
-		if cachedfs, ok := filesystem.(fsext.CacheOnReadFs); ok {
-			filesystem = cachedfs.GetCachingFs()
+		if cachedfs, ok := filesystem.Afero().(fsext.CacheOnReadFs); ok {
+			// FIXME: proper cache fetching
+			filesystem = fsext.NewFS(cachedfs.GetCachingFs())
 		}
 
 		// A couple of things going on here:
@@ -315,11 +319,11 @@ func (arc *Archive) Write(out io.Writer) error {
 			}
 
 			paths = append(paths, normalizedPath)
-			files[normalizedPath], err = afero.ReadFile(filesystem, filePath)
+			files[normalizedPath], err = filesystem.ReadFile(filePath)
 			return err
 		})
 
-		if err = fsext.Walk(filesystem, afero.FilePathSeparator, walkFunc); err != nil {
+		if err = fsext.Walk(filesystem.Afero(), afero.FilePathSeparator, walkFunc); err != nil {
 			return err
 		}
 		if len(files) == 0 {
@@ -335,16 +339,16 @@ func (arc *Archive) Write(out io.Writer) error {
 		for _, dirPath := range dirs {
 			_ = w.WriteHeader(&tar.Header{
 				Name:       path.Clean(path.Join(name, dirPath)),
-				Mode:       0755, // MemMapFs is buggy
-				AccessTime: now,  // MemMapFs is buggy
-				ChangeTime: now,  // MemMapFs is buggy
-				ModTime:    now,  // MemMapFs is buggy
+				Mode:       0o755, // MemMapFs is buggy
+				AccessTime: now,   // MemMapFs is buggy
+				ChangeTime: now,   // MemMapFs is buggy
+				ModTime:    now,   // MemMapFs is buggy
 				Typeflag:   tar.TypeDir,
 			})
 		}
 
 		for _, filePath := range paths {
-			var fullFilePath = path.Clean(path.Join(name, filePath))
+			fullFilePath := path.Clean(path.Join(name, filePath))
 			// we either have opaque
 			if fullFilePath == actualDataPath {
 				madeLinkToData = true
@@ -357,7 +361,7 @@ func (arc *Archive) Write(out io.Writer) error {
 			} else {
 				err = w.WriteHeader(&tar.Header{
 					Name:       fullFilePath,
-					Mode:       0644, // MemMapFs is buggy
+					Mode:       0o644, // MemMapFs is buggy
 					Size:       int64(len(files[filePath])),
 					AccessTime: infos[filePath].ModTime(),
 					ChangeTime: infos[filePath].ModTime(),

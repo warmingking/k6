@@ -25,10 +25,10 @@ import (
 	"testing"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/testutils"
 )
 
@@ -69,7 +69,7 @@ func TestCDNJS(t *testing.T) {
 		},
 	}
 
-	var root = &url.URL{Scheme: "https", Host: "example.com", Path: "/something/"}
+	root := &url.URL{Scheme: "https", Host: "example.com", Path: "/something/"}
 	logger := logrus.New()
 	logger.SetOutput(testutils.NewTestOutput(t))
 	for path, expected := range paths {
@@ -88,7 +88,7 @@ func TestCDNJS(t *testing.T) {
 			require.Empty(t, resolvedURL.Scheme)
 			require.Equal(t, path, resolvedURL.Opaque)
 
-			data, err := Load(logger, map[string]afero.Fs{"https": afero.NewMemMapFs()}, resolvedURL, path)
+			data, err := Load(logger, map[string]fsext.FS{"https": fsext.NewInMemoryFS()}, resolvedURL, path)
 			require.NoError(t, err)
 			assert.Equal(t, resolvedURL, data.URL)
 			assert.NotEmpty(t, data.Data)
@@ -116,7 +116,7 @@ func TestCDNJS(t *testing.T) {
 		pathURL, err := url.Parse(src)
 		require.NoError(t, err)
 
-		_, err = Load(logger, map[string]afero.Fs{"https": afero.NewMemMapFs()}, pathURL, path)
+		_, err = Load(logger, map[string]fsext.FS{"https": fsext.NewInMemoryFS()}, pathURL, path)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found: https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/nonexistent.js")
 	})

@@ -135,7 +135,7 @@ func (c *Client) Load(ctxPtr *context.Context, importPaths []string, filenames .
 		InferImportPaths: false,
 		Accessor: protoparse.FileAccessor(func(filename string) (io.ReadCloser, error) {
 			absFilePath := initEnv.GetAbsFilePath(filename)
-			return initEnv.FileSystems["file"].Open(absFilePath)
+			return initEnv.FileSystems["file"].Afero().Open(absFilePath)
 		}),
 	}
 

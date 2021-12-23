@@ -36,7 +36,7 @@ import (
 
 // ReadSource Reads a source file from any supported destination.
 func ReadSource(
-	logger logrus.FieldLogger, src, pwd string, filesystems map[string]afero.Fs, stdin io.Reader,
+	logger logrus.FieldLogger, src, pwd string, filesystems map[string]fsext.FS, stdin io.Reader,
 ) (*SourceData, error) {
 	if src == "-" {
 		data, err := ioutil.ReadAll(stdin)
@@ -44,7 +44,7 @@ func ReadSource(
 			return nil, err
 		}
 		// TODO: don't do it in this way ...
-		err = afero.WriteFile(filesystems["file"].(fsext.CacheOnReadFs).GetCachingFs(), "/-", data, 0644)
+		err = afero.WriteFile(filesystems["file"].Afero().(fsext.CacheOnReadFs).GetCachingFs(), "/-", data, 0o644)
 		if err != nil {
 			return nil, fmt.Errorf("caching data read from -: %w", err)
 		}
@@ -59,7 +59,7 @@ func ReadSource(
 	// All paths should start with a / in all fses. This is mostly for windows where it will start
 	// with a volume name : C:\something.js
 	srcLocalPath = filepath.Clean(afero.FilePathSeparator + srcLocalPath)
-	if ok, _ := afero.Exists(filesystems["file"], srcLocalPath); ok {
+	if ok, _ := afero.Exists(filesystems["file"].Afero(), srcLocalPath); ok {
 		// there is file on the local disk ... lets use it :)
 		return Load(logger, filesystems, &url.URL{Scheme: "file", Path: filepath.ToSlash(srcLocalPath)}, src)
 	}

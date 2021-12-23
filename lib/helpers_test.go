@@ -65,4 +65,4 @@ func TestStrictJSONUnmarshal(t *testing.T) {
 	}
 }
 
-//TODO: test EventStream very thoroughly
+// TODO: test EventStream very thoroughly

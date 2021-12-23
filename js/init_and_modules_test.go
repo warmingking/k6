@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
@@ -37,6 +36,7 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/loader"
@@ -91,7 +91,7 @@ func TestNewJSRunnerWithCustomModule(t *testing.T) {
 			URL:  &url.URL{Path: "blah", Scheme: "file"},
 			Data: []byte(script),
 		},
-		map[string]afero.Fs{"file": afero.NewMemMapFs(), "https": afero.NewMemMapFs()},
+		map[string]fsext.FS{"file": fsext.NewInMemoryFS(), "https": fsext.NewInMemoryFS()},
 		rtOptions,
 		builtinMetrics,
 		registry,

@@ -26,6 +26,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 )
 
@@ -33,7 +34,7 @@ import (
 // in the k6 init context. It can be accessed by calling common.GetInitEnv().
 type InitEnvironment struct {
 	Logger      logrus.FieldLogger
-	FileSystems map[string]afero.Fs
+	FileSystems map[string]fsext.FS
 	CWD         *url.URL
 	Registry    *metrics.Registry
 	// TODO: add RuntimeOptions and other properties, goja sources, etc.

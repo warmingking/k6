@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
 	"go.k6.io/k6/loader"
@@ -52,7 +53,6 @@ func TestDir(t *testing.T) {
 }
 
 func TestResolve(t *testing.T) {
-
 	t.Run("Blank", func(t *testing.T) {
 		_, err := loader.Resolve(nil, "")
 		assert.EqualError(t, err, "local or remote path required")
@@ -100,8 +100,8 @@ func TestResolve(t *testing.T) {
 		require.Equal(t, "https://example.com/path/to/something", moduleURL.String())
 		require.Equal(t, "https://example.com/path/to", pwdURL.String())
 	})
-
 }
+
 func TestLoad(t *testing.T) {
 	logger := logrus.New()
 	logger.SetOutput(testutils.NewTestOutput(t))
@@ -116,10 +116,11 @@ func TestLoad(t *testing.T) {
 	}()
 
 	t.Run("Local", func(t *testing.T) {
-		filesystems := make(map[string]afero.Fs)
-		filesystems["file"] = afero.NewMemMapFs()
-		assert.NoError(t, filesystems["file"].MkdirAll("/path/to", 0755))
-		assert.NoError(t, afero.WriteFile(filesystems["file"], "/path/to/file.txt", []byte("hi"), 0644))
+		filesystems := make(map[string]fsext.FS)
+		filesystems["file"] = fsext.NewInMemoryFS()
+
+		assert.NoError(t, filesystems["file"].Afero().MkdirAll("/path/to", 0o755))
+		assert.NoError(t, afero.WriteFile(filesystems["file"].Afero(), "/path/to/file.txt", []byte("hi"), 0o644))
 
 		testdata := map[string]struct{ pwd, path string }{
 			"Absolute": {"/path/", "/path/to/file.txt"},
@@ -160,7 +161,8 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("Remote", func(t *testing.T) {
-		filesystems := map[string]afero.Fs{"https": afero.NewMemMapFs()}
+		filesystems := map[string]fsext.FS{"https": fsext.NewInMemoryFS()}
+
 		t.Run("From local", func(t *testing.T) {
 			root, err := url.Parse("file:///")
 			require.NoError(t, err)
@@ -222,7 +224,7 @@ func TestLoad(t *testing.T) {
 		moduleSpecifierURL, err := loader.Resolve(root, moduleSpecifier)
 		require.NoError(t, err)
 
-		filesystems := map[string]afero.Fs{"https": afero.NewMemMapFs()}
+		filesystems := map[string]fsext.FS{"https": fsext.NewInMemoryFS()}
 		src, err := loader.Load(logger, filesystems, moduleSpecifierURL, moduleSpecifier)
 
 		require.NoError(t, err)
@@ -244,14 +246,14 @@ func TestLoad(t *testing.T) {
 			require.Contains(t, err.Error(), `invalid URL escape "%31"`)
 		})
 
-		var testData = [...]struct {
+		testData := [...]struct {
 			name, moduleSpecifier string
 		}{
 			{"URL", sr("HTTPSBIN_URL/invalid")},
 			{"HOST", "some-path-that-doesnt-exist.js"},
 		}
 
-		filesystems := map[string]afero.Fs{"https": afero.NewMemMapFs()}
+		filesystems := map[string]fsext.FS{"https": fsext.NewInMemoryFS()}
 		for _, data := range testData {
 			moduleSpecifier := data.moduleSpecifier
 			t.Run(data.name, func(t *testing.T) {

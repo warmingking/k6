@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
@@ -39,6 +38,7 @@ import (
 	"go.k6.io/k6/js"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/executor"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
@@ -744,8 +744,8 @@ func TestSetupException(t *testing.T) {
 	};
 	`)
 
-	memfs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(memfs, "/bar.js", []byte(`
+	memfs := fsext.NewInMemoryFS()
+	require.NoError(t, memfs.WriteFile("/bar.js", []byte(`
 	export default function () {
         baz();
 	}
@@ -758,7 +758,7 @@ func TestSetupException(t *testing.T) {
 	runner, err := js.New(
 		testutils.NewLogger(t),
 		&loader.SourceData{URL: &url.URL{Scheme: "file", Path: "/script.js"}, Data: script},
-		map[string]afero.Fs{"file": memfs},
+		map[string]fsext.FS{"file": memfs},
 		lib.RuntimeOptions{},
 		builtinMetrics,
 		registry,
@@ -1019,7 +1019,6 @@ func TestMetricsEmission(t *testing.T) {
 	}
 }
 
-//nolint: funlen
 func TestMinIterationDurationInSetupTeardownStage(t *testing.T) {
 	t.Parallel()
 	setupScript := `

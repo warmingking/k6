@@ -52,13 +52,15 @@ const isWindows = runtime.GOOS == "windows"
 
 func getSimpleBundle(tb testing.TB, filename, data string, opts ...interface{}) (*Bundle, error) {
 	var (
-		fs                        = afero.NewMemMapFs()
+		fs                        = fsext.NewInMemoryFS()
 		rtOpts                    = lib.RuntimeOptions{}
 		logger logrus.FieldLogger = testutils.NewLogger(tb)
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
 		case afero.Fs:
+			fs = fsext.NewFS(opt)
+		case fsext.FS:
 			fs = opt
 		case lib.RuntimeOptions:
 			rtOpts = opt
@@ -72,7 +74,7 @@ func getSimpleBundle(tb testing.TB, filename, data string, opts ...interface{}) 
 			URL:  &url.URL{Path: filename, Scheme: "file"},
 			Data: []byte(data),
 		},
-		map[string]afero.Fs{"file": fs, "https": afero.NewMemMapFs()},
+		map[string]fsext.FS{"file": fs, "https": fsext.NewInMemoryFS()},
 		rtOpts,
 		metrics.NewRegistry(),
 	)
@@ -964,11 +966,11 @@ func TestBundleMakeArchive(t *testing.T) {
 			assert.Equal(t, tc.script, string(arc.Data))
 			assert.Equal(t, "file:///path/to/", arc.PwdURL.String())
 
-			exclaimData, err := afero.ReadFile(arc.Filesystems["file"], "/path/to/exclaim.js")
+			exclaimData, err := arc.Filesystems["file"].ReadFile("/path/to/exclaim.js")
 			assert.NoError(t, err)
 			assert.Equal(t, tc.exclaim, string(exclaimData))
 
-			fileData, err := afero.ReadFile(arc.Filesystems["file"], "/path/to/file.txt")
+			fileData, err := arc.Filesystems["file"].ReadFile("/path/to/file.txt")
 			assert.NoError(t, err)
 			assert.Equal(t, `hi`, string(fileData))
 			assert.Equal(t, consts.Version, arc.K6Version)

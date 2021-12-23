@@ -37,6 +37,7 @@ import (
 
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/loader"
@@ -79,14 +80,14 @@ func TestConsoleContext(t *testing.T) {
 
 func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) (*Runner, error) {
 	var (
-		fs     = afero.NewMemMapFs()
+		fs     = fsext.NewInMemoryFS()
 		rtOpts = lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)}
 		logger = testutils.NewLogger(tb)
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
 		case afero.Fs:
-			fs = opt
+			fs = fsext.NewFS(opt)
 		case lib.RuntimeOptions:
 			rtOpts = opt
 		case *logrus.Logger:
@@ -101,7 +102,7 @@ func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) 
 			URL:  &url.URL{Path: filename, Scheme: "file"},
 			Data: []byte(data),
 		},
-		map[string]afero.Fs{"file": fs, "https": afero.NewMemMapFs()},
+		map[string]fsext.FS{"file": fs, "https": fsext.NewInMemoryFS()},
 		rtOpts,
 		builtinMetrics,
 		registry,
@@ -238,7 +239,6 @@ func TestFileConsole(t *testing.T) {
 								if err != nil {
 									t.Fatalf("Error while writing text to preexisting logfile: %s", err)
 								}
-
 							}
 							r, err := getSimpleRunner(t, "/script",
 								fmt.Sprintf(

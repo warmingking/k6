@@ -55,6 +55,7 @@ import (
 	"go.k6.io/k6/js/modules/k6/ws"
 	"go.k6.io/k6/lib"
 	_ "go.k6.io/k6/lib/executor" // TODO: figure out something better
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
@@ -1624,7 +1625,7 @@ func TestArchiveNotPanicking(t *testing.T) {
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()
-	arc.Filesystems = map[string]afero.Fs{"file": afero.NewMemMapFs()}
+	arc.Filesystems = map[string]fsext.FS{"file": fsext.NewInMemoryFS()}
 	registry := metrics.NewRegistry()
 	builtinMetrics := metrics.RegisterBuiltinMetrics(registry)
 	r2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
@@ -1883,7 +1884,7 @@ func TestVUPanic(t *testing.T) {
 }
 
 type multiFileTestCase struct {
-	fses       map[string]afero.Fs
+	fses       map[string]fsext.FS
 	rtOpts     lib.RuntimeOptions
 	cwd        string
 	script     string
@@ -1966,19 +1967,19 @@ func TestComplicatedFileImportsForGRPC(t *testing.T) {
 		}, nil
 	}
 
-	fs := afero.NewMemMapFs()
+	inMemoryFS := fsext.NewInMemoryFS()
 	protoFile, err := ioutil.ReadFile("../vendor/google.golang.org/grpc/test/grpc_testing/test.proto")
 	require.NoError(t, err)
-	require.NoError(t, afero.WriteFile(fs, "/path/to/service.proto", protoFile, 0644))
-	require.NoError(t, afero.WriteFile(fs, "/path/to/same-dir.proto", []byte(
+	require.NoError(t, inMemoryFS.WriteFile("/path/to/service.proto", protoFile, 0o644))
+	require.NoError(t, inMemoryFS.WriteFile("/path/to/same-dir.proto", []byte(
 		`syntax = "proto3";package whatever;import "service.proto";`,
-	), 0644))
-	require.NoError(t, afero.WriteFile(fs, "/path/subdir.proto", []byte(
+	), 0o644))
+	require.NoError(t, inMemoryFS.WriteFile("/path/subdir.proto", []byte(
 		`syntax = "proto3";package whatever;import "to/service.proto";`,
-	), 0644))
-	require.NoError(t, afero.WriteFile(fs, "/path/to/abs.proto", []byte(
+	), 0o644))
+	require.NoError(t, inMemoryFS.WriteFile("/path/to/abs.proto", []byte(
 		`syntax = "proto3";package whatever;import "/path/to/service.proto";`,
-	), 0644))
+	), 0o644))
 
 	grpcTestCase := func(expInitErr, expVUErr bool, cwd, loadCode string) multiFileTestCase {
 		script := tb.Replacer.Replace(fmt.Sprintf(`
@@ -2001,7 +2002,7 @@ func TestComplicatedFileImportsForGRPC(t *testing.T) {
 		`, loadCode))
 
 		return multiFileTestCase{
-			fses:    map[string]afero.Fs{"file": fs, "https": afero.NewMemMapFs()},
+			fses:    map[string]fsext.FS{"file": inMemoryFS, "https": fsext.NewInMemoryFS()},
 			rtOpts:  lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)},
 			samples: make(chan stats.SampleContainer, 100),
 			cwd:     cwd, expInitErr: expInitErr, expVUErr: expVUErr, script: script,

@@ -35,6 +35,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+	"go.k6.io/k6/lib/fsext"
 )
 
 // SourceData wraps a source file; data and filename.
@@ -113,7 +114,7 @@ func Resolve(pwd *url.URL, moduleSpecifier string) (*url.URL, error) {
 
 		// we always want for the pwd to end in a slash, but filepath/path.Clean strips it so we read
 		// it if it's missing
-		var finalPwd = pwd
+		finalPwd := pwd
 		if pwd.Opaque != "" {
 			if !strings.HasSuffix(pwd.Opaque, "/") {
 				finalPwd = &url.URL{Opaque: pwd.Opaque + "/"}
@@ -167,7 +168,7 @@ func Dir(old *url.URL) *url.URL {
 // for a given scheme which is they key of the map. If the scheme is https then a request will
 // be made if the files is not found in the map and written to the map.
 func Load(
-	logger logrus.FieldLogger, filesystems map[string]afero.Fs, moduleSpecifier *url.URL, originalModuleSpecifier string,
+	logger logrus.FieldLogger, filesystems map[string]fsext.FS, moduleSpecifier *url.URL, originalModuleSpecifier string,
 ) (*SourceData, error) {
 	logger.WithFields(
 		logrus.Fields{
@@ -194,7 +195,7 @@ func Load(
 		return nil, err
 	}
 
-	data, err := afero.ReadFile(filesystems[scheme], pathOnFs)
+	data, err := filesystems[scheme].ReadFile(pathOnFs)
 
 	if err == nil {
 		return &SourceData{URL: moduleSpecifier, Data: data}, nil
@@ -203,7 +204,7 @@ func Load(
 		return nil, err
 	}
 	if scheme == "https" {
-		var finalModuleSpecifierURL = &url.URL{}
+		finalModuleSpecifierURL := &url.URL{}
 
 		switch {
 		case moduleSpecifier.Opaque != "": // This is loader
@@ -226,7 +227,7 @@ func Load(
 			result.URL = moduleSpecifier
 			// TODO maybe make an afero.Fs which makes request directly and than use CacheOnReadFs
 			// on top of as with the `file` scheme fs
-			_ = afero.WriteFile(filesystems[scheme], pathOnFs, result.Data, 0644)
+			_ = filesystems[scheme].WriteFile(pathOnFs, result.Data, 0o644)
 			return result, nil
 		}
 
@@ -255,7 +256,7 @@ func resolveUsingLoaders(logger logrus.FieldLogger, name string) (*url.URL, erro
 }
 
 func loadRemoteURL(logger logrus.FieldLogger, u *url.URL) (*SourceData, error) {
-	var oldQuery = u.RawQuery
+	oldQuery := u.RawQuery
 	if u.RawQuery != "" {
 		u.RawQuery += "&"
 	}

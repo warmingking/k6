@@ -32,13 +32,13 @@ import (
 	"github.com/dop251/goja"
 	"github.com/dop251/goja/parser"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"gopkg.in/guregu/null.v3"
 
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/js/compiler"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/loader"
 )
@@ -73,7 +73,7 @@ type BundleInstance struct {
 
 // NewBundle creates a new bundle from a source file and a filesystem.
 func NewBundle(
-	logger logrus.FieldLogger, src *loader.SourceData, filesystems map[string]afero.Fs, rtOpts lib.RuntimeOptions,
+	logger logrus.FieldLogger, src *loader.SourceData, filesystems map[string]fsext.FS, rtOpts lib.RuntimeOptions,
 	registry *metrics.Registry,
 ) (*Bundle, error) {
 	compatMode, err := lib.ValidateCompatibilityMode(rtOpts.CompatibilityMode.String)

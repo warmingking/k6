@@ -25,10 +25,10 @@ import (
 	"testing"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/testutils"
 )
 
@@ -44,13 +44,16 @@ func TestGithub(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedEndSrc, src)
 
-	var root = &url.URL{Scheme: "https", Host: "example.com", Path: "/something/"}
+	root := &url.URL{Scheme: "https", Host: "example.com", Path: "/something/"}
 	resolvedURL, err := Resolve(root, path)
 	require.NoError(t, err)
 	require.Empty(t, resolvedURL.Scheme)
 	require.Equal(t, path, resolvedURL.Opaque)
+
 	t.Run("not cached", func(t *testing.T) {
-		data, err := Load(logger, map[string]afero.Fs{"https": afero.NewMemMapFs()}, resolvedURL, path)
+		t.Parallel()
+
+		data, err := Load(logger, map[string]fsext.FS{"https": fsext.NewInMemoryFS()}, resolvedURL, path)
 		require.NoError(t, err)
 		assert.Equal(t, data.URL, resolvedURL)
 		assert.Equal(t, path, data.URL.String())
@@ -58,20 +61,24 @@ func TestGithub(t *testing.T) {
 	})
 
 	t.Run("cached", func(t *testing.T) {
-		fs := afero.NewMemMapFs()
+		t.Parallel()
+
+		inMemoryFS := fsext.NewInMemoryFS()
 		testData := []byte("test data")
 
-		err := afero.WriteFile(fs, "/github.com/github/gitignore/Go.gitignore", testData, 0644)
+		err := inMemoryFS.WriteFile("/github.com/github/gitignore/Go.gitignore", testData, 0o644)
 		require.NoError(t, err)
 
-		data, err := Load(logger, map[string]afero.Fs{"https": fs}, resolvedURL, path)
+		data, err := Load(logger, map[string]fsext.FS{"https": inMemoryFS}, resolvedURL, path)
 		require.NoError(t, err)
 		assert.Equal(t, path, data.URL.String())
 		assert.Equal(t, data.Data, testData)
 	})
 
 	t.Run("relative", func(t *testing.T) {
-		var tests = map[string]string{
+		t.Parallel()
+
+		tests := map[string]string{
 			"./something.else":  "github.com/github/gitignore/something.else",
 			"../something.else": "github.com/github/something.else",
 			"/something.else":   "github.com/something.else",
@@ -84,6 +91,8 @@ func TestGithub(t *testing.T) {
 	})
 
 	t.Run("dir", func(t *testing.T) {
+		t.Parallel()
+
 		require.Equal(t, &url.URL{Opaque: "github.com/github/gitignore"}, Dir(resolvedURL))
 	})
 }

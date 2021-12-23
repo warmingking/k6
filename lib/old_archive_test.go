@@ -35,10 +35,11 @@ import (
 	"go.k6.io/k6/lib/fsext"
 )
 
-func dumpMemMapFsToBuf(fs afero.Fs) (*bytes.Buffer, error) {
-	var b = bytes.NewBuffer(nil)
-	var w = tar.NewWriter(b)
-	err := fsext.Walk(fs, afero.FilePathSeparator,
+func dumpMemMapFsToBuf(sourceFS fsext.FS) (*bytes.Buffer, error) {
+	resultBuffer := bytes.NewBuffer(nil)
+	tarWriter := tar.NewWriter(resultBuffer)
+
+	err := fsext.Walk(sourceFS.Afero(), afero.FilePathSeparator,
 		filepath.WalkFunc(func(filePath string, info os.FileInfo, err error) error {
 			if filePath == afero.FilePathSeparator {
 				return nil // skip the root
@@ -47,27 +48,27 @@ func dumpMemMapFsToBuf(fs afero.Fs) (*bytes.Buffer, error) {
 				return err
 			}
 			if info.IsDir() {
-				return w.WriteHeader(&tar.Header{
+				return tarWriter.WriteHeader(&tar.Header{
 					Name:     path.Clean(filepath.ToSlash(filePath)[1:]),
-					Mode:     0555,
+					Mode:     0o555,
 					Typeflag: tar.TypeDir,
 				})
 			}
 			var data []byte
-			data, err = afero.ReadFile(fs, filePath)
+			data, err = sourceFS.ReadFile(filePath)
 			if err != nil {
 				return err
 			}
-			err = w.WriteHeader(&tar.Header{
+			err = tarWriter.WriteHeader(&tar.Header{
 				Name:     path.Clean(filepath.ToSlash(filePath)[1:]),
-				Mode:     0644,
+				Mode:     0o644,
 				Size:     int64(len(data)),
 				Typeflag: tar.TypeReg,
 			})
 			if err != nil {
 				return err
 			}
-			_, err = w.Write(data)
+			_, err = tarWriter.Write(data)
 			if err != nil {
 				return err
 			}
@@ -76,11 +77,11 @@ func dumpMemMapFsToBuf(fs afero.Fs) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return b, w.Close()
+	return resultBuffer, tarWriter.Close()
 }
 
 func TestOldArchive(t *testing.T) {
-	var testCases = map[string]string{
+	testCases := map[string]string{
 		// map of filename to data for each main file tested
 		"github.com/k6io/k6/samples/example.js": `github file`,
 		"cdnjs.com/packages/Faker":              `faker file`,
@@ -112,24 +113,22 @@ func TestOldArchive(t *testing.T) {
 			buf, err := dumpMemMapFsToBuf(fs)
 			require.NoError(t, err)
 
-			var (
-				expectedFilesystems = map[string]afero.Fs{
-					"file": makeMemMapFs(t, map[string][]byte{
-						"/C:/something/path":  []byte(`windows file`),
-						"/absolulte/path":     []byte(`unix file`),
-						"/C:/something/path2": []byte(`windows script`),
-						"/absolulte/path2":    []byte(`unix script`),
-					}),
-					"https": makeMemMapFs(t, map[string][]byte{
-						"/example.com/path/to.js":                 []byte(`example.com file`),
-						"/example.com/path/too.js":                []byte(`example.com script`),
-						"/github.com/k6io/k6/samples/example.js":  []byte(`github file`),
-						"/cdnjs.com/packages/Faker":               []byte(`faker file`),
-						"/github.com/k6io/k6/samples/example.js2": []byte(`github script`),
-						"/cdnjs.com/packages/Faker2":              []byte(`faker script`),
-					}),
-				}
-			)
+			expectedFilesystems := map[string]fsext.FS{
+				"file": makeMemMapFs(t, map[string][]byte{
+					"/C:/something/path":  []byte(`windows file`),
+					"/absolulte/path":     []byte(`unix file`),
+					"/C:/something/path2": []byte(`windows script`),
+					"/absolulte/path2":    []byte(`unix script`),
+				}),
+				"https": makeMemMapFs(t, map[string][]byte{
+					"/example.com/path/to.js":                 []byte(`example.com file`),
+					"/example.com/path/too.js":                []byte(`example.com script`),
+					"/github.com/k6io/k6/samples/example.js":  []byte(`github file`),
+					"/cdnjs.com/packages/Faker":               []byte(`faker file`),
+					"/github.com/k6io/k6/samples/example.js2": []byte(`github script`),
+					"/cdnjs.com/packages/Faker2":              []byte(`faker script`),
+				}),
+			}
 
 			arc, err := ReadArchive(buf)
 			require.NoError(t, err)
@@ -153,7 +152,7 @@ func TestUnknownPrefix(t *testing.T) {
 }
 
 func TestFilenamePwdResolve(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		Filename, Pwd, version              string
 		expectedFilenameURL, expectedPwdURL *url.URL
 		expectedError                       string
@@ -230,7 +229,7 @@ func TestFilenamePwdResolve(t *testing.T) {
 
 func TestDerivedExecutionDiscarding(t *testing.T) {
 	var emptyConfigMap ScenarioConfigs
-	var tests = []struct {
+	tests := []struct {
 		metadata     string
 		expScenarios interface{}
 		expError     string

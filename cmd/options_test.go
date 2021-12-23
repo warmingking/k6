@@ -27,7 +27,6 @@ import (
 )
 
 func TestParseTagKeyValue(t *testing.T) {
-
 	testData := []struct {
 		input string
 		name  string
@@ -80,5 +79,4 @@ func TestParseTagKeyValue(t *testing.T) {
 			assert.Equal(t, err, data.err)
 		})
 	}
-
 }

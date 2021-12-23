@@ -48,6 +48,7 @@ import (
 	"go.k6.io/k6/js/modules/k6/metrics"
 	"go.k6.io/k6/js/modules/k6/ws"
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/loader"
 )
 
@@ -72,7 +73,7 @@ type InitContext struct {
 	ctxPtr *context.Context
 
 	// Filesystem to load files and scripts from with the map key being the scheme
-	filesystems map[string]afero.Fs
+	filesystems map[string]fsext.FS
 	pwd         *url.URL
 
 	// Cache of loaded programs and files.
@@ -88,7 +89,7 @@ type InitContext struct {
 // NewInitContext creates a new initcontext with the provided arguments
 func NewInitContext(
 	logger logrus.FieldLogger, rt *goja.Runtime, c *compiler.Compiler, compatMode lib.CompatibilityMode,
-	ctxPtr *context.Context, filesystems map[string]afero.Fs, pwd *url.URL,
+	ctxPtr *context.Context, filesystems map[string]fsext.FS, pwd *url.URL,
 ) *InitContext {
 	return &InitContext{
 		runtime:           rt,
@@ -300,12 +301,12 @@ func (i *InitContext) Open(ctx context.Context, filename string, args ...string)
 		filename = afero.FilePathSeparator + filename
 	}
 	// Workaround for https://github.com/spf13/afero/issues/201
-	if isDir, err := afero.IsDir(fs, filename); err != nil {
+	if isDir, err := afero.IsDir(fs.Afero(), filename); err != nil {
 		return nil, err
 	} else if isDir {
 		return nil, fmt.Errorf("open() can't be used with directories, path: %q", filename)
 	}
-	data, err := afero.ReadFile(fs, filename)
+	data, err := fs.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

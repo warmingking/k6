@@ -50,6 +50,7 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/loader"
 	"go.k6.io/k6/ui/pb"
@@ -403,7 +404,7 @@ func runCmdFlagSet() *pflag.FlagSet {
 
 // Creates a new runner.
 func newRunner(
-	logger *logrus.Logger, src *loader.SourceData, typ string, filesystems map[string]afero.Fs, rtOpts lib.RuntimeOptions,
+	logger *logrus.Logger, src *loader.SourceData, typ string, filesystems map[string]fsext.FS, rtOpts lib.RuntimeOptions,
 	builtinMetrics *metrics.BuiltinMetrics, registry *metrics.Registry,
 ) (runner lib.Runner, err error) {
 	switch typ {
@@ -447,7 +448,7 @@ func handleSummaryResult(fs afero.Fs, stdOut, stdErr io.Writer, result map[strin
 		case "stderr":
 			return stdErr, nil
 		default:
-			return fs.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+			return fs.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
 		}
 	}
 
