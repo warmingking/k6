@@ -34,13 +34,13 @@ import (
 	"github.com/dop251/goja"
 	"github.com/oxtoacart/bpool"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
+	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/netext"
 	"go.k6.io/k6/lib/testutils"
@@ -90,8 +90,9 @@ func TestInitContextRequire(t *testing.T) {
 		})
 
 		t.Run("group", func(t *testing.T) {
-			logger := testutils.NewLogger(t)
 			t.Parallel()
+
+			logger := testutils.NewLogger(t)
 			b, err := getSimpleBundle(t, "/script.js", `
 						import { group } from "k6";
 						export let _group = group;
@@ -117,6 +118,7 @@ func TestInitContextRequire(t *testing.T) {
 
 	t.Run("Files", func(t *testing.T) {
 		t.Parallel()
+
 		t.Run("Nonexistent", func(t *testing.T) {
 			t.Parallel()
 			path := filepath.FromSlash("/nonexistent.js")
@@ -126,17 +128,20 @@ func TestInitContextRequire(t *testing.T) {
 		})
 		t.Run("Invalid", func(t *testing.T) {
 			t.Parallel()
-			fs := afero.NewMemMapFs()
-			assert.NoError(t, afero.WriteFile(fs, "/file.js", []byte{0x00}, 0o755))
-			_, err := getSimpleBundle(t, "/script.js", `import "/file.js"; export default function() {}`, fs)
+
+			inMemoryFS := fsext.NewInMemoryFS()
+			assert.NoError(t, inMemoryFS.WriteFile("/file.js", []byte{0x00}, 0o755))
+			_, err := getSimpleBundle(t, "/script.js", `import "/file.js"; export default function() {}`, inMemoryFS)
+
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "SyntaxError: file:///file.js: Unexpected character '\x00' (1:0)\n> 1 | \x00\n")
 		})
 		t.Run("Error", func(t *testing.T) {
 			t.Parallel()
-			fs := afero.NewMemMapFs()
-			assert.NoError(t, afero.WriteFile(fs, "/file.js", []byte(`throw new Error("aaaa")`), 0o755))
-			_, err := getSimpleBundle(t, "/script.js", `import "/file.js"; export default function() {}`, fs)
+
+			inMemoryFS := fsext.NewInMemoryFS()
+			assert.NoError(t, inMemoryFS.WriteFile("/file.js", []byte(`throw new Error("aaaa")`), 0o755))
+			_, err := getSimpleBundle(t, "/script.js", `import "/file.js"; export default function() {}`, inMemoryFS)
 			assert.EqualError(t, err, "Error: aaaa\n\tat file:///file.js:2:7(3)\n\tat reflect.methodValueCall (native)\n\tat file:///script.js:1:109(14)\n")
 		})
 
@@ -181,7 +186,7 @@ func TestInitContextRequire(t *testing.T) {
 					}
 					t.Run(name, func(t *testing.T) {
 						t.Parallel()
-						fs := afero.NewMemMapFs()
+						inMemoryFS := fsext.NewInMemoryFS()
 						logger := testutils.NewLogger(t)
 
 						jsLib := `export default function() { return 12345; }`
@@ -192,25 +197,25 @@ func TestInitContextRequire(t *testing.T) {
 							)
 
 							constsrc := `export let c = 12345;`
-							assert.NoError(t, fs.MkdirAll(filepath.Dir(constPath), 0o755))
-							assert.NoError(t, afero.WriteFile(fs, constPath, []byte(constsrc), 0o644))
+							assert.NoError(t, inMemoryFS.Afero().MkdirAll(filepath.Dir(constPath), 0o755))
+							assert.NoError(t, inMemoryFS.WriteFile(constPath, []byte(constsrc), 0o644))
 						}
 
-						assert.NoError(t, fs.MkdirAll(filepath.Dir(data.LibPath), 0o755))
-						assert.NoError(t, afero.WriteFile(fs, data.LibPath, []byte(jsLib), 0o644))
+						assert.NoError(t, inMemoryFS.Afero().MkdirAll(filepath.Dir(data.LibPath), 0o755))
+						assert.NoError(t, inMemoryFS.WriteFile(data.LibPath, []byte(jsLib), 0o644))
 
 						data := fmt.Sprintf(`
 								import fn from "%s";
 								let v = fn();
 								export default function() {};`,
 							libName)
-						b, err := getSimpleBundle(t, "/path/to/script.js", data, fs)
+						bundle, err := getSimpleBundle(t, "/path/to/script.js", data, inMemoryFS)
 						require.NoError(t, err)
 						if constPath != "" {
-							assert.Contains(t, b.BaseInitContext.programs, "file://"+constPath)
+							assert.Contains(t, bundle.BaseInitContext.programs, "file://"+constPath)
 						}
 
-						_, err = b.Instantiate(logger, 0)
+						_, err = bundle.Instantiate(logger, 0)
 						require.NoError(t, err)
 					})
 				}
@@ -220,9 +225,10 @@ func TestInitContextRequire(t *testing.T) {
 		t.Run("Isolation", func(t *testing.T) {
 			t.Parallel()
 			logger := testutils.NewLogger(t)
-			fs := afero.NewMemMapFs()
-			assert.NoError(t, afero.WriteFile(fs, "/a.js", []byte(`const myvar = "a";`), 0o644))
-			assert.NoError(t, afero.WriteFile(fs, "/b.js", []byte(`const myvar = "b";`), 0o644))
+			inMemoryFS := fsext.NewInMemoryFS()
+
+			assert.NoError(t, inMemoryFS.WriteFile("/a.js", []byte(`const myvar = "a";`), 0o644))
+			assert.NoError(t, inMemoryFS.WriteFile("/b.js", []byte(`const myvar = "b";`), 0o644))
 			data := `
 				import "./a.js";
 				import "./b.js";
@@ -231,7 +237,7 @@ func TestInitContextRequire(t *testing.T) {
 						throw new Error("myvar is set in global scope");
 					}
 				};`
-			b, err := getSimpleBundle(t, "/script.js", data, fs)
+			b, err := getSimpleBundle(t, "/script.js", data, inMemoryFS)
 			require.NoError(t, err)
 
 			bi, err := b.Instantiate(logger, 0)
@@ -244,9 +250,10 @@ func TestInitContextRequire(t *testing.T) {
 
 func createAndReadFile(t *testing.T, file string, content []byte, expectedLength int, binary string) (*BundleInstance, error) {
 	t.Helper()
-	fs := afero.NewMemMapFs()
-	assert.NoError(t, fs.MkdirAll("/path/to", 0o755))
-	assert.NoError(t, afero.WriteFile(fs, "/path/to/"+file, content, 0o644))
+	inMemoryFS := fsext.NewInMemoryFS()
+
+	assert.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+	assert.NoError(t, inMemoryFS.WriteFile("/path/to/"+file, content, 0o644))
 
 	data := fmt.Sprintf(`
 		let binArg = "%s";
@@ -258,13 +265,13 @@ func createAndReadFile(t *testing.T, file string, content []byte, expectedLength
 		}
 		export default function() {}
 	`, binary, file, expectedLength)
-	b, err := getSimpleBundle(t, "/path/to/script.js", data, fs)
+	bundle, err := getSimpleBundle(t, "/path/to/script.js", data, inMemoryFS)
 
 	if !assert.NoError(t, err) {
 		return nil, err
 	}
 
-	bi, err := b.Instantiate(testutils.NewLogger(t), 0)
+	bi, err := bundle.Instantiate(testutils.NewLogger(t), 0)
 	if !assert.NoError(t, err) {
 		return nil, err
 	}
@@ -324,10 +331,11 @@ func TestInitContextOpen(t *testing.T) {
 
 	t.Run("Directory", func(t *testing.T) {
 		t.Parallel()
+
 		path := filepath.FromSlash("/some/dir")
-		fs := afero.NewMemMapFs()
-		assert.NoError(t, fs.MkdirAll(path, 0o755))
-		_, err := getSimpleBundle(t, "/script.js", `open("/some/dir"); export default function() {}`, fs)
+		inMemoryFS := fsext.NewInMemoryFS()
+		assert.NoError(t, inMemoryFS.Afero().MkdirAll(path, 0o755))
+		_, err := getSimpleBundle(t, "/script.js", `open("/some/dir"); export default function() {}`, inMemoryFS)
 		assert.Contains(t, err.Error(), fmt.Sprintf("open() can't be used with directories, path: %q", path))
 	})
 }
@@ -358,9 +366,9 @@ func TestRequestWithBinaryFile(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(h))
 	defer srv.Close()
 
-	fs := afero.NewMemMapFs()
-	assert.NoError(t, fs.MkdirAll("/path/to", 0o755))
-	assert.NoError(t, afero.WriteFile(fs, "/path/to/file.bin", []byte("hi!"), 0o644))
+	inMemoryFS := fsext.NewInMemoryFS()
+	assert.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+	assert.NoError(t, inMemoryFS.WriteFile("/path/to/file.bin", []byte("hi!"), 0o644))
 
 	b, err := getSimpleBundle(t, "/path/to/script.js",
 		fmt.Sprintf(`
@@ -374,7 +382,7 @@ func TestRequestWithBinaryFile(t *testing.T) {
 				var res = http.post("%s", data);
 				return true;
 			}
-			`, srv.URL), fs)
+			`, srv.URL), inMemoryFS)
 	require.NoError(t, err)
 
 	bi, err := b.Instantiate(testutils.NewLogger(t), 0)
@@ -453,10 +461,10 @@ func TestRequestWithMultipleBinaryFiles(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(h))
 	defer srv.Close()
 
-	fs := afero.NewMemMapFs()
-	assert.NoError(t, fs.MkdirAll("/path/to", 0o755))
-	assert.NoError(t, afero.WriteFile(fs, "/path/to/file1.bin", []byte("file1"), 0o644))
-	assert.NoError(t, afero.WriteFile(fs, "/path/to/file2.bin", []byte("file2"), 0o644))
+	inMemoryFS := fsext.NewInMemoryFS()
+	assert.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+	assert.NoError(t, inMemoryFS.WriteFile("/path/to/file1.bin", []byte("file1"), 0o644))
+	assert.NoError(t, inMemoryFS.WriteFile("/path/to/file2.bin", []byte("file2"), 0o644))
 
 	b, err := getSimpleBundle(t, "/path/to/script.js",
 		fmt.Sprintf(`
@@ -523,7 +531,7 @@ func TestRequestWithMultipleBinaryFiles(t *testing.T) {
 		}
 		return true;
 	}
-			`, srv.URL), fs)
+			`, srv.URL), inMemoryFS)
 	require.NoError(t, err)
 
 	bi, err := b.Instantiate(testutils.NewLogger(t), 0)

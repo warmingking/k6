@@ -28,7 +28,6 @@ import (
 	"testing"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -120,7 +119,7 @@ func TestLoad(t *testing.T) {
 		filesystems["file"] = fsext.NewInMemoryFS()
 
 		assert.NoError(t, filesystems["file"].Afero().MkdirAll("/path/to", 0o755))
-		assert.NoError(t, afero.WriteFile(filesystems["file"].Afero(), "/path/to/file.txt", []byte("hi"), 0o644))
+		assert.NoError(t, filesystems["file"].WriteFile("/path/to/file.txt", []byte("hi"), 0o644))
 
 		testdata := map[string]struct{ pwd, path string }{
 			"Absolute": {"/path/", "/path/to/file.txt"},

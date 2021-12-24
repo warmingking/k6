@@ -40,7 +40,6 @@ import (
 
 	"github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/test/grpc_testing"
@@ -496,14 +495,16 @@ func TestRunnerIntegrationImports(t *testing.T) {
 			name, data := name, data
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
-				fs := afero.NewMemMapFs()
-				require.NoError(t, fs.MkdirAll("/path/to", 0o755))
-				require.NoError(t, afero.WriteFile(fs, "/path/to/lib.js", []byte(`exports.default = "hi!";`), 0o644))
+
+				inMemoryFS := fsext.NewInMemoryFS()
+				require.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+				require.NoError(t, inMemoryFS.WriteFile("/path/to/lib.js", []byte(`exports.default = "hi!";`), 0o644))
+
 				r1, err := getSimpleRunner(t, data.filename, fmt.Sprintf(`
 					var hi = require("%s").default;
 					exports.default = function() {
 						if (hi != "hi!") { throw new Error("incorrect value"); }
-					}`, data.path), fs)
+					}`, data.path), inMemoryFS)
 				require.NoError(t, err)
 
 				registry := metrics.NewRegistry()
@@ -1563,7 +1564,7 @@ func TestInitContextForbidden(t *testing.T) {
 func TestArchiveRunningIntegrity(t *testing.T) {
 	t.Parallel()
 
-	fs := afero.NewMemMapFs()
+	inMemoryFS := fsext.NewInMemoryFS()
 	data := `
 			var fput = open("/home/somebody/test.json");
 			exports.options = { setupTimeout: "10s", teardownTimeout: "10s" };
@@ -1576,22 +1577,22 @@ func TestArchiveRunningIntegrity(t *testing.T) {
 				}
 			}
 		`
-	require.NoError(t, afero.WriteFile(fs, "/home/somebody/test.json", []byte(`42`), os.ModePerm))
-	require.NoError(t, afero.WriteFile(fs, "/script.js", []byte(data), os.ModePerm))
-	r1, err := getSimpleRunner(t, "/script.js", data, fs)
+	require.NoError(t, inMemoryFS.WriteFile("/home/somebody/test.json", []byte(`42`), os.ModePerm))
+	require.NoError(t, inMemoryFS.WriteFile("/script.js", []byte(data), os.ModePerm))
+	runner1, err := getSimpleRunner(t, "/script.js", data, inMemoryFS)
 	require.NoError(t, err)
 
 	buf := bytes.NewBuffer(nil)
-	require.NoError(t, r1.MakeArchive().Write(buf))
+	require.NoError(t, runner1.MakeArchive().Write(buf))
 
 	arc, err := lib.ReadArchive(buf)
 	require.NoError(t, err)
 	registry := metrics.NewRegistry()
 	builtinMetrics := metrics.RegisterBuiltinMetrics(registry)
-	r2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
+	runner2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
 	require.NoError(t, err)
 
-	runners := map[string]*Runner{"Source": r1, "Archive": r2}
+	runners := map[string]*Runner{"Source": runner1, "Archive": runner2}
 	for name, r := range runners {
 		r := r
 		t.Run(name, func(t *testing.T) {
@@ -1616,12 +1617,13 @@ func TestArchiveRunningIntegrity(t *testing.T) {
 
 func TestArchiveNotPanicking(t *testing.T) {
 	t.Parallel()
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, "/non/existent", []byte(`42`), os.ModePerm))
+
+	inMemoryFS := fsext.NewInMemoryFS()
+	require.NoError(t, inMemoryFS.WriteFile("/non/existent", []byte(`42`), os.ModePerm))
 	r1, err := getSimpleRunner(t, "/script.js", `
 			var fput = open("/non/existent");
 			exports.default = function(data) {}
-		`, fs)
+		`, inMemoryFS)
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()

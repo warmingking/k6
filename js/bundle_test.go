@@ -609,6 +609,8 @@ func TestNewBundleFromArchive(t *testing.T) {
 }
 
 func TestOpen(t *testing.T) {
+	t.Parallel()
+
 	testCases := [...]struct {
 		name           string
 		openPath       string
@@ -680,24 +682,24 @@ func TestOpen(t *testing.T) {
 			isError:  true,
 		},
 	}
-	fss := map[string]func() (afero.Fs, string, func()){
-		"MemMapFS": func() (afero.Fs, string, func()) {
-			fs := afero.NewMemMapFs()
-			require.NoError(t, fs.MkdirAll("/path/to", 0o755))
-			require.NoError(t, afero.WriteFile(fs, "/path/to/file.txt", []byte(`hi`), 0o644))
+	fss := map[string]func() (fsext.FS, string, func()){
+		"MemMapFS": func() (fsext.FS, string, func()) {
+			fs := fsext.NewInMemoryFS()
+			require.NoError(t, fs.Afero().MkdirAll("/path/to", 0o755))
+			require.NoError(t, fs.WriteFile("/path/to/file.txt", []byte(`hi`), 0o644))
 			return fs, "", func() {}
 		},
-		"OsFS": func() (afero.Fs, string, func()) {
+		"OsFS": func() (fsext.FS, string, func()) {
 			prefix, err := ioutil.TempDir("", "k6_open_test")
 			require.NoError(t, err)
-			fs := afero.NewOsFs()
+			osFS := fsext.NewFS(afero.NewOsFs())
 			filePath := filepath.Join(prefix, "/path/to/file.txt")
-			require.NoError(t, fs.MkdirAll(filepath.Join(prefix, "/path/to"), 0o755))
-			require.NoError(t, afero.WriteFile(fs, filePath, []byte(`hi`), 0o644))
+			require.NoError(t, osFS.Afero().MkdirAll(filepath.Join(prefix, "/path/to"), 0o755))
+			require.NoError(t, osFS.WriteFile(filePath, []byte(`hi`), 0o644))
 			if isWindows {
-				fs = fsext.NewTrimFilePathSeparatorFs(fs)
+				osFS = fsext.NewFS(fsext.NewTrimFilePathSeparatorFs(osFS.Afero()))
 			}
-			return fs, prefix, func() { require.NoError(t, os.RemoveAll(prefix)) }
+			return osFS, prefix, func() { require.NoError(t, os.RemoveAll(prefix)) }
 		},
 	}
 
@@ -713,7 +715,7 @@ func TestOpen(t *testing.T) {
 					t.Parallel()
 					fs, prefix, cleanUp := fsInit()
 					defer cleanUp()
-					fs = afero.NewReadOnlyFs(fs)
+					fs = fsext.NewFS(afero.NewReadOnlyFs(fs.Afero()))
 					openPath := tCase.openPath
 					// if fullpath prepend prefix
 					if openPath != "" && (openPath[0] == '/' || openPath[0] == '\\') {
@@ -949,13 +951,14 @@ func TestBundleMakeArchive(t *testing.T) {
 		tc := tc
 		t.Run(tc.cm.String(), func(t *testing.T) {
 			t.Parallel()
-			fs := afero.NewMemMapFs()
-			_ = fs.MkdirAll("/path/to", 0o755)
-			_ = afero.WriteFile(fs, "/path/to/file.txt", []byte(`hi`), 0o644)
-			_ = afero.WriteFile(fs, "/path/to/exclaim.js", []byte(tc.exclaim), 0o644)
+
+			inMemoryFS := fsext.NewInMemoryFS()
+			_ = inMemoryFS.Afero().MkdirAll("/path/to", 0o755)
+			_ = inMemoryFS.WriteFile("/path/to/file.txt", []byte(`hi`), 0o644)
+			_ = inMemoryFS.WriteFile("/path/to/exclaim.js", []byte(tc.exclaim), 0o644)
 
 			rtOpts := lib.RuntimeOptions{CompatibilityMode: null.StringFrom(tc.cm.String())}
-			b, err := getSimpleBundle(t, "/path/to/script.js", tc.script, fs, rtOpts)
+			b, err := getSimpleBundle(t, "/path/to/script.js", tc.script, inMemoryFS, rtOpts)
 			assert.NoError(t, err)
 
 			arc := b.makeArchive()

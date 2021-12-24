@@ -26,7 +26,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 
@@ -77,16 +76,17 @@ func TestLoadOnceGlobalVars(t *testing.T) {
 		cData := data
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			fs := afero.NewMemMapFs()
-			require.NoError(t, afero.WriteFile(fs, "/C.js", []byte(cData), os.ModePerm))
 
-			require.NoError(t, afero.WriteFile(fs, "/A.js", []byte(`
+			inMemoryFS := fsext.NewInMemoryFS()
+			require.NoError(t, inMemoryFS.WriteFile("/C.js", []byte(cData), os.ModePerm))
+
+			require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(`
 		import { C } from "./C.js";
 		export function A() {
 			return C();
 		}
 	`), os.ModePerm))
-			require.NoError(t, afero.WriteFile(fs, "/B.js", []byte(`
+			require.NoError(t, inMemoryFS.WriteFile("/B.js", []byte(`
 		var  c = require("./C.js");
 		export function B() {
 			return c.C();
@@ -104,7 +104,7 @@ func TestLoadOnceGlobalVars(t *testing.T) {
 					throw new Error("A() != B()    (" + A() + ") != (" + B() + ")");
 				}
 			}
-		`, fs, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
+		`, inMemoryFS, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
 			require.NoError(t, err)
 
 			arc := r1.MakeArchive()
@@ -136,8 +136,9 @@ func TestLoadOnceGlobalVars(t *testing.T) {
 
 func TestLoadExportsIsUsableInModule(t *testing.T) {
 	t.Parallel()
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, "/A.js", []byte(`
+
+	inMemoryFS := fsext.NewInMemoryFS()
+	require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(`
 		export function A() {
 			return "A";
 		}
@@ -157,7 +158,7 @@ func TestLoadExportsIsUsableInModule(t *testing.T) {
 					throw new Error("wrong value of B() " + B());
 				}
 			}
-		`, fs, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
+		`, inMemoryFS, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()
@@ -190,8 +191,8 @@ func TestLoadDoesntBreakHTTPGet(t *testing.T) {
 	// inside script that is imported
 
 	tb := httpmultibin.NewHTTPMultiBin(t)
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, "/A.js", []byte(tb.Replacer.Replace(`
+	inMemoryFS := fsext.NewInMemoryFS()
+	require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(tb.Replacer.Replace(`
 		import http from "k6/http";
 		export function A() {
 			return http.get("HTTPBIN_URL/get");
@@ -206,7 +207,7 @@ func TestLoadDoesntBreakHTTPGet(t *testing.T) {
 					throw new Error("wrong status "+ resp.status);
 				}
 			}
-		`, fs, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
+		`, inMemoryFS, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
 	require.NoError(t, err)
 
 	require.NoError(t, r1.SetOptions(lib.Options{Hosts: tb.Dialer.Hosts}))
@@ -236,8 +237,8 @@ func TestLoadDoesntBreakHTTPGet(t *testing.T) {
 
 func TestLoadGlobalVarsAreNotSharedBetweenVUs(t *testing.T) {
 	t.Parallel()
-	fs := afero.NewMemMapFs()
-	require.NoError(t, afero.WriteFile(fs, "/A.js", []byte(`
+	inMemoryFS := fsext.NewInMemoryFS()
+	require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(`
 		var globalVar = 0;
 		export function A() {
 			globalVar += 1
@@ -255,7 +256,7 @@ func TestLoadGlobalVarsAreNotSharedBetweenVUs(t *testing.T) {
 					throw new Error("wrong value of a " + a);
 				}
 			}
-		`, fs, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
+		`, inMemoryFS, lib.RuntimeOptions{CompatibilityMode: null.StringFrom("extended")})
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()
