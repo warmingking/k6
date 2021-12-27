@@ -74,7 +74,7 @@ func getConvertCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			harFile, err := defaultFS.Afero().Open(filePath)
+			harFile, err := defaultFS.Open(filePath)
 			if err != nil {
 				return err
 			}

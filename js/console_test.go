@@ -31,7 +31,6 @@ import (
 	"github.com/dop251/goja"
 	"github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/guregu/null.v3"
 
@@ -88,8 +87,6 @@ func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) 
 		switch opt := o.(type) {
 		case fs.RWFS:
 			fileSys = opt
-		case afero.Fs:
-			fileSys = fs.NewAferoBased(opt)
 		case lib.RuntimeOptions:
 			rtOpts = opt
 		case *logrus.Logger:

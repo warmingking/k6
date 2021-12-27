@@ -59,8 +59,6 @@ func getSimpleBundle(tb testing.TB, filename, data string, opts ...interface{}) 
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
-		case afero.Fs:
-			fileSys = fs.NewAferoBased(opt)
 		case fs.RWFS:
 			fileSys = opt
 		case lib.RuntimeOptions:

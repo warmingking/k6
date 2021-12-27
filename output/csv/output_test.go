@@ -194,7 +194,7 @@ func readUnCompressedFile(fileName string, fileSys fs.RWFS) string {
 }
 
 func readCompressedFile(fileName string, fileSys fs.RWFS) string {
-	file, err := fileSys.Afero().Open(fileName)
+	file, err := fileSys.Open(fileName)
 	if err != nil {
 		return err.Error()
 	}

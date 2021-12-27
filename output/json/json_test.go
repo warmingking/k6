@@ -142,7 +142,7 @@ func TestJsonOutputFile(t *testing.T) {
 	require.NoError(t, out.Stop())
 
 	assert.Empty(t, stdout.Bytes())
-	file, err := inMemoryFS.Afero().Open("/json-output")
+	file, err := inMemoryFS.Open("/json-output")
 	require.NoError(t, err)
 	validateResults(file)
 	assert.NoError(t, file.Close())
@@ -170,7 +170,7 @@ func TestJsonOutputFileGzipped(t *testing.T) {
 	require.NoError(t, out.Stop())
 
 	assert.Empty(t, stdout.Bytes())
-	file, err := inMemoryFS.Afero().Open("/json-output.gz")
+	file, err := inMemoryFS.Open("/json-output.gz")
 	require.NoError(t, err)
 	reader, err := gzip.NewReader(file)
 	require.NoError(t, err)

@@ -1,8 +1,11 @@
 package fs
 
 import (
+	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/afero"
 )
@@ -34,26 +37,73 @@ func NewAferoOSFS() *AferoBased {
 
 // Afero is the getter for the affero
 // deprecated
-func (fs AferoBased) Afero() afero.Fs { // nolint:ireturn
-	return fs.afero
+func (ab AferoBased) Afero() afero.Fs { // nolint:ireturn
+	return ab.afero
 }
 
 // Open opens the named file.
-func (fs *AferoBased) Open(name string) (fs.File, error) {
-	panic("not implemented") // TODO: Implement
+func (ab *AferoBased) Open(name string) (fs.File, error) {
+	// by convention for fs.FS implementations we should perform this check
+	// TODO: check why
+	// here is an issue that /path/to/same-dir.proto is invalid path
+	if !fs.ValidPath(strings.TrimLeft(name, string(filepath.Separator))) {
+		return nil, errors.New("invalid path: " + name)
+	}
+
+	file, err := ab.afero.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := file.(fs.ReadDirFile); !ok {
+		return readDirFile{file}, nil
+	}
+
+	return file, nil
 }
 
 // ReadFile .
-func (fs AferoBased) ReadFile(path string) ([]byte, error) {
-	return afero.ReadFile(fs.afero, path)
+func (ab AferoBased) ReadFile(path string) ([]byte, error) {
+	return afero.ReadFile(ab.afero, path)
 }
 
 // WriteFile .
-func (fs AferoBased) WriteFile(path string, data []byte, perm os.FileMode) error {
-	return afero.WriteFile(fs.afero, path, data, perm)
+func (ab AferoBased) WriteFile(path string, data []byte, perm os.FileMode) error {
+	return afero.WriteFile(ab.afero, path, data, perm)
 }
 
 // MkdirAll .
-func (fs AferoBased) MkdirAll(path string, perm os.FileMode) error {
-	return fs.afero.MkdirAll(path, perm)
+func (ab AferoBased) MkdirAll(path string, perm os.FileMode) error {
+	return ab.afero.MkdirAll(path, perm)
 }
+
+type readDirFile struct {
+	afero.File
+}
+
+var _ fs.ReadDirFile = readDirFile{}
+
+func (r readDirFile) ReadDir(n int) ([]fs.DirEntry, error) {
+	items, err := r.File.Readdir(n)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := make([]fs.DirEntry, len(items))
+	for i := range items {
+		ret[i] = dirEntry{items[i]}
+	}
+
+	return ret, nil
+}
+
+// dirEntry provides adapter from os.FileInfo to fs.DirEntry
+type dirEntry struct {
+	fs.FileInfo
+}
+
+var _ fs.DirEntry = dirEntry{}
+
+func (d dirEntry) Type() fs.FileMode { return d.FileInfo.Mode().Type() }
+
+func (d dirEntry) Info() (fs.FileInfo, error) { return d.FileInfo, nil }
