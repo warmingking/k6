@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/output"
 	"go.k6.io/k6/stats"
@@ -108,11 +109,11 @@ func TestJsonOutputFileError(t *testing.T) {
 	t.Parallel()
 
 	stdout := new(bytes.Buffer)
-	fs := afero.NewReadOnlyFs(afero.NewMemMapFs())
+	inMemoryFS := fs.NewAferoBased(afero.NewReadOnlyFs(fs.NewInMemoryFS().Afero()))
 	out, err := New(output.Params{
 		Logger:         testutils.NewLogger(t),
 		StdOut:         stdout,
-		FS:             fs,
+		FS:             inMemoryFS,
 		ConfigArgument: "/json-output",
 	})
 	require.NoError(t, err)
@@ -123,11 +124,11 @@ func TestJsonOutputFile(t *testing.T) {
 	t.Parallel()
 
 	stdout := new(bytes.Buffer)
-	fs := afero.NewMemMapFs()
+	inMemoryFS := fs.NewInMemoryFS()
 	out, err := New(output.Params{
 		Logger:         testutils.NewLogger(t),
 		StdOut:         stdout,
-		FS:             fs,
+		FS:             inMemoryFS,
 		ConfigArgument: "/json-output",
 	})
 	require.NoError(t, err)
@@ -141,7 +142,7 @@ func TestJsonOutputFile(t *testing.T) {
 	require.NoError(t, out.Stop())
 
 	assert.Empty(t, stdout.Bytes())
-	file, err := fs.Open("/json-output")
+	file, err := inMemoryFS.Afero().Open("/json-output")
 	require.NoError(t, err)
 	validateResults(file)
 	assert.NoError(t, file.Close())
@@ -151,11 +152,11 @@ func TestJsonOutputFileGzipped(t *testing.T) {
 	t.Parallel()
 
 	stdout := new(bytes.Buffer)
-	fs := afero.NewMemMapFs()
+	inMemoryFS := fs.NewInMemoryFS()
 	out, err := New(output.Params{
 		Logger:         testutils.NewLogger(t),
 		StdOut:         stdout,
-		FS:             fs,
+		FS:             inMemoryFS,
 		ConfigArgument: "/json-output.gz",
 	})
 	require.NoError(t, err)
@@ -169,7 +170,7 @@ func TestJsonOutputFileGzipped(t *testing.T) {
 	require.NoError(t, out.Stop())
 
 	assert.Empty(t, stdout.Bytes())
-	file, err := fs.Open("/json-output.gz")
+	file, err := inMemoryFS.Afero().Open("/json-output.gz")
 	require.NoError(t, err)
 	reader, err := gzip.NewReader(file)
 	require.NoError(t, err)

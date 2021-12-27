@@ -36,7 +36,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -45,6 +44,7 @@ import (
 	"go.k6.io/k6/errext/exitcodes"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/loader"
 	"go.k6.io/k6/ui/pb"
@@ -121,7 +121,7 @@ This will execute the test on the k6 cloud service. Use "k6 login cloud" to auth
 			if err != nil {
 				return err
 			}
-			conf, err := getConsolidatedConfig(afero.NewOsFs(), Config{Options: cliOpts}, r)
+			conf, err := getConsolidatedConfig(fs.NewAferoOSFS(), Config{Options: cliOpts}, r)
 			if err != nil {
 				return err
 			}

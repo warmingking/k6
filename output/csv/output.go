@@ -103,7 +103,7 @@ func newOutput(params output.Params) (*Output, error) {
 		}, nil
 	}
 
-	logFile, err := params.FS.Create(fname)
+	logFile, err := params.FS.Afero().Create(fname)
 	if err != nil {
 		return nil, err
 	}

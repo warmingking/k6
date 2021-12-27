@@ -30,6 +30,7 @@ import (
 	"github.com/spf13/afero"
 
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/loader"
 	"go.k6.io/k6/output"
 	"go.k6.io/k6/output/cloud"
@@ -95,7 +96,7 @@ func createOutputs(
 		Environment:    osEnvironment,
 		StdOut:         stdout,
 		StdErr:         stderr,
-		FS:             afero.NewOsFs(),
+		FS:             fs.NewAferoBased(afero.NewOsFs()),
 		ScriptOptions:  conf.Options,
 		RuntimeOptions: rtOpts,
 		ExecutionPlan:  executionPlan,

@@ -96,7 +96,7 @@ type Archive struct {
 	Goos      string `json:"goos"`
 }
 
-func (arc *Archive) getFs(name string) fs.RWFS { // nolint:ireturn
+func (arc *Archive) getFs(name string) fs.RWFS { // nolint
 	fileSys, ok := arc.Filesystems[name]
 	if !ok {
 		a := afero.NewMemMapFs()

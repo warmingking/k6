@@ -24,10 +24,10 @@ import (
 	"os"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/loader"
 )
@@ -78,7 +78,7 @@ An archive is a fully self-contained test run, and can be executed identically e
 			if err != nil {
 				return err
 			}
-			conf, err := getConsolidatedConfig(afero.NewOsFs(), Config{Options: cliOpts}, r)
+			conf, err := getConsolidatedConfig(fs.NewAferoOSFS(), Config{Options: cliOpts}, r)
 			if err != nil {
 				return err
 			}

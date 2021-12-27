@@ -27,6 +27,11 @@ func NewInMemoryFS() *AferoBased {
 	return NewAferoBased(afero.NewMemMapFs())
 }
 
+// NewAferoOSFS .
+func NewAferoOSFS() *AferoBased {
+	return NewAferoBased(afero.NewOsFs())
+}
+
 // Afero is the getter for the affero
 // deprecated
 func (fs AferoBased) Afero() afero.Fs { // nolint:ireturn

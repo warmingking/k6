@@ -42,6 +42,7 @@ import (
 	"go.k6.io/k6/errext"
 	"go.k6.io/k6/errext/exitcodes"
 	"go.k6.io/k6/js/common"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/testutils"
 )
@@ -60,20 +61,20 @@ func (fw mockWriter) Write(p []byte) (n int, err error) {
 
 var _ io.Writer = mockWriter{}
 
-func getFiles(t *testing.T, fs afero.Fs) map[string]*bytes.Buffer {
+func getFiles(t *testing.T, fileSys fs.RWFS) map[string]*bytes.Buffer {
 	result := map[string]*bytes.Buffer{}
 	walkFn := func(filePath string, info os.FileInfo, err error) error {
 		if filePath == "/" || filePath == "\\" {
 			return nil
 		}
 		require.NoError(t, err)
-		contents, err := afero.ReadFile(fs, filePath)
+		contents, err := fileSys.ReadFile(filePath)
 		require.NoError(t, err)
 		result[filePath] = bytes.NewBuffer(contents)
 		return nil
 	}
 
-	err := fsext.Walk(fs, afero.FilePathSeparator, filepath.WalkFunc(walkFn))
+	err := fsext.Walk(fileSys.Afero(), afero.FilePathSeparator, filepath.WalkFunc(walkFn))
 	require.NoError(t, err)
 
 	return result
@@ -86,9 +87,9 @@ func assertEqual(t *testing.T, exp string, actual io.Reader) {
 }
 
 func initVars() (
-	content map[string]io.Reader, stdout *bytes.Buffer, stderr *bytes.Buffer, fs afero.Fs,
+	content map[string]io.Reader, stdout *bytes.Buffer, stderr *bytes.Buffer, fileSys fs.RWFS,
 ) {
-	return map[string]io.Reader{}, bytes.NewBuffer([]byte{}), bytes.NewBuffer([]byte{}), afero.NewMemMapFs()
+	return map[string]io.Reader{}, bytes.NewBuffer([]byte{}), bytes.NewBuffer([]byte{}), fs.NewInMemoryFS()
 }
 
 func TestHandleSummaryResultSimple(t *testing.T) {

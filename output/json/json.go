@@ -83,7 +83,7 @@ func (o *Output) Start() error {
 			return nil
 		}
 	} else {
-		logfile, err := o.params.FS.Create(o.filename)
+		logfile, err := o.params.FS.Afero().Create(o.filename)
 		if err != nil {
 			return err
 		}

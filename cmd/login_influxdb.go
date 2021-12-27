@@ -27,11 +27,11 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 	"gopkg.in/guregu/null.v3"
 
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/output/influxdb"
 	"go.k6.io/k6/ui"
 )
@@ -46,8 +46,8 @@ func getLoginInfluxDBCommand(logger logrus.FieldLogger) *cobra.Command {
 This will set the default server used when just "-o influxdb" is passed.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fs := afero.NewOsFs()
-			config, configPath, err := readDiskConfig(fs)
+			fileSys := fs.NewAferoOSFS()
+			config, configPath, err := readDiskConfig(fileSys)
 			if err != nil {
 				return err
 			}
@@ -120,7 +120,7 @@ This will set the default server used when just "-o influxdb" is passed.`,
 			if err != nil {
 				return err
 			}
-			return writeDiskConfig(fs, configPath, config)
+			return writeDiskConfig(fileSys, configPath, config)
 		},
 	}
 	return loginInfluxDBCommand

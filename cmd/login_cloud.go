@@ -28,13 +28,13 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 	"gopkg.in/guregu/null.v3"
 
 	"go.k6.io/k6/cloudapi"
 	"go.k6.io/k6/lib/consts"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/ui"
 )
 
@@ -58,9 +58,9 @@ This will set the default token used when just "k6 run -o cloud" is passed.`,
   k6 login cloud`[1:],
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fs := afero.NewOsFs()
+			fileSys := fs.NewAferoOSFS()
 
-			currentDiskConf, configPath, err := readDiskConfig(fs)
+			currentDiskConf, configPath, err := readDiskConfig(fileSys)
 			if err != nil {
 				return err
 			}
@@ -144,7 +144,7 @@ This will set the default token used when just "k6 run -o cloud" is passed.`,
 			if err != nil {
 				return err
 			}
-			if err := writeDiskConfig(fs, configPath, currentDiskConf); err != nil {
+			if err := writeDiskConfig(fileSys, configPath, currentDiskConf); err != nil {
 				return err
 			}
 

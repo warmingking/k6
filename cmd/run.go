@@ -37,7 +37,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -131,7 +130,7 @@ a commandline interface for interacting with it.`,
 			if err != nil {
 				return err
 			}
-			conf, err := getConsolidatedConfig(afero.NewOsFs(), cliConf, initRunner)
+			conf, err := getConsolidatedConfig(fs.NewAferoOSFS(), cliConf, initRunner)
 			if err != nil {
 				return err
 			}
@@ -314,7 +313,7 @@ a commandline interface for interacting with it.`,
 					},
 				})
 				if err == nil {
-					err = handleSummaryResult(afero.NewOsFs(), stdout, stderr, summaryResult)
+					err = handleSummaryResult(fs.NewAferoOSFS(), stdout, stderr, summaryResult)
 				}
 				if err != nil {
 					logger.WithError(err).Error("failed to handle the end-of-test summary")
@@ -438,7 +437,7 @@ func detectType(data []byte) string {
 	return typeJS
 }
 
-func handleSummaryResult(fs afero.Fs, stdOut, stdErr io.Writer, result map[string]io.Reader) error {
+func handleSummaryResult(fileSys fs.RWFS, stdOut, stdErr io.Writer, result map[string]io.Reader) error {
 	var errs []error
 
 	getWriter := func(path string) (io.Writer, error) {
@@ -448,7 +447,7 @@ func handleSummaryResult(fs afero.Fs, stdOut, stdErr io.Writer, result map[strin
 		case "stderr":
 			return stdErr, nil
 		default:
-			return fs.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
+			return fileSys.Afero().OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
 		}
 	}
 

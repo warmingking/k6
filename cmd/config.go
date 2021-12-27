@@ -29,7 +29,6 @@ import (
 	"strings"
 
 	"github.com/kelseyhightower/envconfig"
-	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 	"gopkg.in/guregu/null.v3"
 
@@ -37,6 +36,7 @@ import (
 	"go.k6.io/k6/errext/exitcodes"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/executor"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/types"
 	"go.k6.io/k6/stats"
 )
@@ -65,8 +65,8 @@ type Config struct {
 // Validate checks if all of the specified options make sense
 func (c Config) Validate() []error {
 	errors := c.Options.Validate()
-	//TODO: validate all of the other options... that we should have already been validating...
-	//TODO: maybe integrate an external validation lib: https://github.com/avelino/awesome-go#validation
+	// TODO: validate all of the other options... that we should have already been validating...
+	// TODO: maybe integrate an external validation lib: https://github.com/avelino/awesome-go#validation
 
 	return errors
 }
@@ -112,7 +112,7 @@ func getConfig(flags *pflag.FlagSet) (Config, error) {
 // an error will be returned.
 // If there's no custom config specified and no file exists in the default config path, it will
 // return an empty config struct, the default config location and *no* error.
-func readDiskConfig(fs afero.Fs) (Config, string, error) {
+func readDiskConfig(fileSys fs.RWFS) (Config, string, error) {
 	realConfigFilePath := configFilePath
 	if realConfigFilePath == "" {
 		// The user didn't specify K6_CONFIG or --config, use the default path
@@ -120,7 +120,7 @@ func readDiskConfig(fs afero.Fs) (Config, string, error) {
 	}
 
 	// Try to see if the file exists in the supplied filesystem
-	if _, err := fs.Stat(realConfigFilePath); err != nil {
+	if _, err := fileSys.Afero().Stat(realConfigFilePath); err != nil {
 		if os.IsNotExist(err) && configFilePath == "" {
 			// If the file doesn't exist, but it was the default config file (i.e. the user
 			// didn't specify anything), silence the error
@@ -129,7 +129,7 @@ func readDiskConfig(fs afero.Fs) (Config, string, error) {
 		return Config{}, realConfigFilePath, err
 	}
 
-	data, err := afero.ReadFile(fs, realConfigFilePath)
+	data, err := fileSys.ReadFile(realConfigFilePath)
 	if err != nil {
 		return Config{}, realConfigFilePath, err
 	}
@@ -140,17 +140,17 @@ func readDiskConfig(fs afero.Fs) (Config, string, error) {
 
 // Serializes the configuration to a JSON file and writes it in the supplied
 // location on the supplied filesystem
-func writeDiskConfig(fs afero.Fs, configPath string, conf Config) error {
+func writeDiskConfig(fileSys fs.RWFS, configPath string, conf Config) error {
 	data, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	if err := fs.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+	if err := fileSys.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
 		return err
 	}
 
-	return afero.WriteFile(fs, configPath, data, 0644)
+	return fileSys.WriteFile(configPath, data, 0o644)
 }
 
 // Reads configuration variables from the environment.
@@ -170,10 +170,10 @@ func readEnvConfig() (Config, error) {
 // - set some defaults if they weren't previously specified
 // TODO: add better validation, more explicit default values and improve consistency between formats
 // TODO: accumulate all errors and differentiate between the layers?
-func getConsolidatedConfig(fs afero.Fs, cliConf Config, runner lib.Runner) (conf Config, err error) {
+func getConsolidatedConfig(fileSys fs.RWFS, cliConf Config, runner lib.Runner) (conf Config, err error) {
 	// TODO: use errext.WithExitCodeIfNone(err, exitcodes.InvalidConfig) where it makes sense?
 
-	fileConf, _, err := readDiskConfig(fs)
+	fileConf, _, err := readDiskConfig(fileSys)
 	if err != nil {
 		return conf, err
 	}

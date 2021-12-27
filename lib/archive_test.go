@@ -72,7 +72,7 @@ func TestNormalizeAndAnonymizePath(t *testing.T) {
 	}
 }
 
-func makeMemMapFs(t *testing.T, input map[string][]byte) fs.RWFS { // nolint:ireturn
+func makeMemMapFs(t *testing.T, input map[string][]byte) fs.RWFS { // nolint
 	t.Helper()
 
 	inMemoryFS := fs.NewInMemoryFS()

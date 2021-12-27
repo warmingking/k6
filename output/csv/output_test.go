@@ -31,11 +31,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/output"
 	"go.k6.io/k6/stats"
@@ -184,8 +184,8 @@ func TestSampleToRow(t *testing.T) {
 	}
 }
 
-func readUnCompressedFile(fileName string, fs afero.Fs) string {
-	csvbytes, err := afero.ReadFile(fs, fileName)
+func readUnCompressedFile(fileName string, fileSys fs.RWFS) string {
+	csvbytes, err := fileSys.ReadFile(fileName)
 	if err != nil {
 		return err.Error()
 	}
@@ -193,8 +193,8 @@ func readUnCompressedFile(fileName string, fs afero.Fs) string {
 	return fmt.Sprintf("%s", csvbytes)
 }
 
-func readCompressedFile(fileName string, fs afero.Fs) string {
-	file, err := fs.Open(fileName)
+func readCompressedFile(fileName string, fileSys fs.RWFS) string {
+	file, err := fileSys.Afero().Open(fileName)
 	if err != nil {
 		return err.Error()
 	}
@@ -217,7 +217,7 @@ func TestRun(t *testing.T) {
 	testData := []struct {
 		samples        []stats.SampleContainer
 		fileName       string
-		fileReaderFunc func(fileName string, fs afero.Fs) string
+		fileReaderFunc func(fileName string, fs fs.RWFS) string
 		outputContent  string
 	}{
 		{
@@ -279,7 +279,7 @@ func TestRun(t *testing.T) {
 	}
 
 	for _, data := range testData {
-		mem := afero.NewMemMapFs()
+		mem := fs.NewInMemoryFS()
 		output, err := newOutput(output.Params{
 			Logger:         testutils.NewLogger(t),
 			FS:             mem,

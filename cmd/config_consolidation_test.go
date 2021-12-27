@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,6 +34,7 @@ import (
 
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/executor"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/minirunner"
 	"go.k6.io/k6/lib/types"
@@ -149,15 +149,15 @@ type file struct {
 	filepath, contents string
 }
 
-func getFS(files []file) afero.Fs {
-	fs := afero.NewMemMapFs()
+func getFS(files []file) fs.RWFS { // nolint:ireturn
+	inMemoryFS := fs.NewInMemoryFS()
 	for _, f := range files {
-		must(afero.WriteFile(fs, f.filepath, []byte(f.contents), 0o644)) // modes don't matter in the afero.MemMapFs
+		must(inMemoryFS.WriteFile(f.filepath, []byte(f.contents), 0o644)) // modes don't matter in the afero.MemMapFs
 	}
-	return fs
+	return inMemoryFS
 }
 
-func defaultConfig(jsonConfig string) afero.Fs {
+func defaultConfig(jsonConfig string) fs.RWFS { // nolint:ireturn
 	return getFS([]file{{defaultConfigFilePath, jsonConfig}})
 }
 
@@ -167,7 +167,7 @@ type opts struct {
 	cli    []string
 	env    []string
 	runner *lib.Options
-	fs     afero.Fs
+	fs     fs.RWFS
 
 	// TODO: remove this when the configuration is more reproducible and sane...
 	// We use a func, because initializing a FlagSet that points to variables
@@ -575,7 +575,7 @@ func runTestCase(
 	}
 	if testCase.options.fs == nil {
 		t.Logf("Creating an empty FS for this test")
-		testCase.options.fs = afero.NewMemMapFs() // create an empty FS if it wasn't supplied
+		testCase.options.fs = fs.NewInMemoryFS() // create an empty FS if it wasn't supplied
 	}
 
 	consolidatedConfig, err := getConsolidatedConfig(testCase.options.fs, cliConf, runner)
