@@ -36,6 +36,7 @@ import (
 	"gopkg.in/guregu/null.v3"
 
 	"go.k6.io/k6/lib/consts"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/stats"
 )
@@ -71,17 +72,17 @@ func TestNormalizeAndAnonymizePath(t *testing.T) {
 	}
 }
 
-func makeMemMapFs(t *testing.T, input map[string][]byte) fsext.FS {
+func makeMemMapFs(t *testing.T, input map[string][]byte) fs.RWFS { // nolint:ireturn
 	t.Helper()
 
-	fs := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	for path, data := range input {
-		require.NoError(t, fs.WriteFile(path, data, 0o644))
+		require.NoError(t, inMemoryFS.WriteFile(path, data, 0o644))
 	}
-	return fs
+	return inMemoryFS
 }
 
-func getMapKeys(m map[string]fsext.FS) []string {
+func getMapKeys(m map[string]fs.RWFS) []string {
 	keys := make([]string, 0, len(m))
 	for key := range m {
 		keys = append(keys, key)
@@ -90,7 +91,7 @@ func getMapKeys(m map[string]fsext.FS) []string {
 	return keys
 }
 
-func diffMapFilesystems(t *testing.T, first, second map[string]fsext.FS) {
+func diffMapFilesystems(t *testing.T, first, second map[string]fs.RWFS) {
 	require.ElementsMatch(t, getMapKeys(first), getMapKeys(second),
 		"fs map keys don't match %s, %s", getMapKeys(first), getMapKeys(second))
 	for key, fs := range first {
@@ -99,7 +100,7 @@ func diffMapFilesystems(t *testing.T, first, second map[string]fsext.FS) {
 	}
 }
 
-func diffFilesystems(t *testing.T, first, second fsext.FS) {
+func diffFilesystems(t *testing.T, first, second fs.RWFS) {
 	diffFilesystemsDir(t, first, second, "/")
 }
 
@@ -111,7 +112,7 @@ func getInfoNames(infos []os.FileInfo) []string {
 	return names
 }
 
-func diffFilesystemsDir(t *testing.T, first, second fsext.FS, dirname string) {
+func diffFilesystemsDir(t *testing.T, first, second fs.RWFS, dirname string) {
 	// TODO: change ot io.FS
 
 	firstInfos, err := afero.ReadDir(first.Afero(), dirname)
@@ -149,7 +150,7 @@ func TestArchiveReadWrite(t *testing.T) {
 			FilenameURL: &url.URL{Scheme: "file", Path: "/path/to/a.js"},
 			Data:        []byte(`// a contents`),
 			PwdURL:      &url.URL{Scheme: "file", Path: "/path/to"},
-			Filesystems: map[string]fsext.FS{
+			Filesystems: map[string]fs.RWFS{
 				"file": makeMemMapFs(t, map[string][]byte{
 					"/path/to/a.js":      []byte(`// a contents`),
 					"/path/to/b.js":      []byte(`// b contents`),
@@ -200,7 +201,7 @@ func TestArchiveReadWrite(t *testing.T) {
 				K6Version:   consts.Version,
 				Data:        []byte(`// a contents`),
 				PwdURL:      &url.URL{Scheme: "file", Path: entry.Pwd},
-				Filesystems: map[string]fsext.FS{
+				Filesystems: map[string]fs.RWFS{
 					"file": makeMemMapFs(t, map[string][]byte{
 						fmt.Sprintf("%s/a.js", entry.Pwd):      []byte(`// a contents`),
 						fmt.Sprintf("%s/b.js", entry.Pwd):      []byte(`// b contents`),
@@ -224,7 +225,7 @@ func TestArchiveReadWrite(t *testing.T) {
 				Data:        []byte(`// a contents`),
 				PwdURL:      &url.URL{Scheme: "file", Path: entry.PwdNormAnon},
 
-				Filesystems: map[string]fsext.FS{
+				Filesystems: map[string]fs.RWFS{
 					"file": makeMemMapFs(t, map[string][]byte{
 						fmt.Sprintf("%s/a.js", entry.PwdNormAnon):      []byte(`// a contents`),
 						fmt.Sprintf("%s/b.js", entry.PwdNormAnon):      []byte(`// b contents`),
@@ -281,8 +282,8 @@ func TestUsingCacheFromCacheOnReadFs(t *testing.T) {
 		K6Version:   consts.Version,
 		Data:        []byte(`test`),
 		PwdURL:      &url.URL{Scheme: "file", Path: "/"},
-		Filesystems: map[string]fsext.FS{
-			"file": fsext.NewFS(fsext.NewCacheOnReadFs(base, cached, 0)),
+		Filesystems: map[string]fs.RWFS{
+			"file": fs.NewAferoBased(fsext.NewCacheOnReadFs(base, cached, 0)),
 		},
 	}
 
@@ -320,10 +321,10 @@ func TestArchiveWithDataNotInFS(t *testing.T) {
 }
 
 func TestMalformedMetadata(t *testing.T) {
-	fs := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 
-	require.NoError(t, fs.WriteFile("/metadata.json", []byte("{,}"), 0o644))
-	b, err := dumpMemMapFsToBuf(fs)
+	require.NoError(t, inMemoryFS.WriteFile("/metadata.json", []byte("{,}"), 0o644))
+	b, err := dumpMemMapFsToBuf(inMemoryFS)
 	require.NoError(t, err)
 	_, err = ReadArchive(b)
 	require.Error(t, err)
@@ -352,7 +353,7 @@ func TestStrangePaths(t *testing.T) {
 			FilenameURL: &url.URL{Scheme: "file", Path: pathToChange},
 			Data:        []byte(`// ` + pathToChange + ` contents`),
 			PwdURL:      &url.URL{Scheme: "file", Path: path.Dir(pathToChange)},
-			Filesystems: map[string]fsext.FS{
+			Filesystems: map[string]fs.RWFS{
 				"file": makeMemMapFs(t, otherMap),
 			},
 		}
@@ -373,13 +374,13 @@ func TestStrangePaths(t *testing.T) {
 
 		assert.Equal(t, arc1, arc2, pathToChange)
 
-		arc1Filesystems["https"] = fsext.NewInMemoryFS()
+		arc1Filesystems["https"] = fs.NewInMemoryFS()
 		diffMapFilesystems(t, arc1Filesystems, arc2Filesystems)
 	}
 }
 
 func TestStdinArchive(t *testing.T) {
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	// we specifically have different contents in both places
 	require.NoError(t, inMemoryFS.WriteFile("/-", []byte(`test`), 0o644))
 
@@ -389,7 +390,7 @@ func TestStdinArchive(t *testing.T) {
 		K6Version:   consts.Version,
 		Data:        []byte(`test`),
 		PwdURL:      &url.URL{Scheme: "file", Path: "/"},
-		Filesystems: map[string]fsext.FS{
+		Filesystems: map[string]fs.RWFS{
 			"file": inMemoryFS,
 		},
 	}

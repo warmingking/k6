@@ -40,7 +40,7 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/netext"
 	"go.k6.io/k6/lib/testutils"
@@ -129,7 +129,7 @@ func TestInitContextRequire(t *testing.T) {
 		t.Run("Invalid", func(t *testing.T) {
 			t.Parallel()
 
-			inMemoryFS := fsext.NewInMemoryFS()
+			inMemoryFS := fs.NewInMemoryFS()
 			assert.NoError(t, inMemoryFS.WriteFile("/file.js", []byte{0x00}, 0o755))
 			_, err := getSimpleBundle(t, "/script.js", `import "/file.js"; export default function() {}`, inMemoryFS)
 
@@ -139,7 +139,7 @@ func TestInitContextRequire(t *testing.T) {
 		t.Run("Error", func(t *testing.T) {
 			t.Parallel()
 
-			inMemoryFS := fsext.NewInMemoryFS()
+			inMemoryFS := fs.NewInMemoryFS()
 			assert.NoError(t, inMemoryFS.WriteFile("/file.js", []byte(`throw new Error("aaaa")`), 0o755))
 			_, err := getSimpleBundle(t, "/script.js", `import "/file.js"; export default function() {}`, inMemoryFS)
 			assert.EqualError(t, err, "Error: aaaa\n\tat file:///file.js:2:7(3)\n\tat reflect.methodValueCall (native)\n\tat file:///script.js:1:109(14)\n")
@@ -186,7 +186,7 @@ func TestInitContextRequire(t *testing.T) {
 					}
 					t.Run(name, func(t *testing.T) {
 						t.Parallel()
-						inMemoryFS := fsext.NewInMemoryFS()
+						inMemoryFS := fs.NewInMemoryFS()
 						logger := testutils.NewLogger(t)
 
 						jsLib := `export default function() { return 12345; }`
@@ -197,11 +197,11 @@ func TestInitContextRequire(t *testing.T) {
 							)
 
 							constsrc := `export let c = 12345;`
-							assert.NoError(t, inMemoryFS.Afero().MkdirAll(filepath.Dir(constPath), 0o755))
+							assert.NoError(t, inMemoryFS.MkdirAll(filepath.Dir(constPath), 0o755))
 							assert.NoError(t, inMemoryFS.WriteFile(constPath, []byte(constsrc), 0o644))
 						}
 
-						assert.NoError(t, inMemoryFS.Afero().MkdirAll(filepath.Dir(data.LibPath), 0o755))
+						assert.NoError(t, inMemoryFS.MkdirAll(filepath.Dir(data.LibPath), 0o755))
 						assert.NoError(t, inMemoryFS.WriteFile(data.LibPath, []byte(jsLib), 0o644))
 
 						data := fmt.Sprintf(`
@@ -225,7 +225,7 @@ func TestInitContextRequire(t *testing.T) {
 		t.Run("Isolation", func(t *testing.T) {
 			t.Parallel()
 			logger := testutils.NewLogger(t)
-			inMemoryFS := fsext.NewInMemoryFS()
+			inMemoryFS := fs.NewInMemoryFS()
 
 			assert.NoError(t, inMemoryFS.WriteFile("/a.js", []byte(`const myvar = "a";`), 0o644))
 			assert.NoError(t, inMemoryFS.WriteFile("/b.js", []byte(`const myvar = "b";`), 0o644))
@@ -250,9 +250,9 @@ func TestInitContextRequire(t *testing.T) {
 
 func createAndReadFile(t *testing.T, file string, content []byte, expectedLength int, binary string) (*BundleInstance, error) {
 	t.Helper()
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 
-	assert.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+	assert.NoError(t, inMemoryFS.MkdirAll("/path/to", 0o755))
 	assert.NoError(t, inMemoryFS.WriteFile("/path/to/"+file, content, 0o644))
 
 	data := fmt.Sprintf(`
@@ -333,8 +333,8 @@ func TestInitContextOpen(t *testing.T) {
 		t.Parallel()
 
 		path := filepath.FromSlash("/some/dir")
-		inMemoryFS := fsext.NewInMemoryFS()
-		assert.NoError(t, inMemoryFS.Afero().MkdirAll(path, 0o755))
+		inMemoryFS := fs.NewInMemoryFS()
+		assert.NoError(t, inMemoryFS.MkdirAll(path, 0o755))
 		_, err := getSimpleBundle(t, "/script.js", `open("/some/dir"); export default function() {}`, inMemoryFS)
 		assert.Contains(t, err.Error(), fmt.Sprintf("open() can't be used with directories, path: %q", path))
 	})
@@ -366,8 +366,8 @@ func TestRequestWithBinaryFile(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(h))
 	defer srv.Close()
 
-	inMemoryFS := fsext.NewInMemoryFS()
-	assert.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+	inMemoryFS := fs.NewInMemoryFS()
+	assert.NoError(t, inMemoryFS.MkdirAll("/path/to", 0o755))
 	assert.NoError(t, inMemoryFS.WriteFile("/path/to/file.bin", []byte("hi!"), 0o644))
 
 	b, err := getSimpleBundle(t, "/path/to/script.js",
@@ -461,8 +461,8 @@ func TestRequestWithMultipleBinaryFiles(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(h))
 	defer srv.Close()
 
-	inMemoryFS := fsext.NewInMemoryFS()
-	assert.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+	inMemoryFS := fs.NewInMemoryFS()
+	assert.NoError(t, inMemoryFS.MkdirAll("/path/to", 0o755))
 	assert.NoError(t, inMemoryFS.WriteFile("/path/to/file1.bin", []byte("file1"), 0o644))
 	assert.NoError(t, inMemoryFS.WriteFile("/path/to/file2.bin", []byte("file2"), 0o644))
 

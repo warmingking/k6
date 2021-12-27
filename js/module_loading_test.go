@@ -30,7 +30,7 @@ import (
 	"gopkg.in/guregu/null.v3"
 
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
@@ -77,7 +77,7 @@ func TestLoadOnceGlobalVars(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			inMemoryFS := fsext.NewInMemoryFS()
+			inMemoryFS := fs.NewInMemoryFS()
 			require.NoError(t, inMemoryFS.WriteFile("/C.js", []byte(cData), os.ModePerm))
 
 			require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(`
@@ -137,7 +137,7 @@ func TestLoadOnceGlobalVars(t *testing.T) {
 func TestLoadExportsIsUsableInModule(t *testing.T) {
 	t.Parallel()
 
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(`
 		export function A() {
 			return "A";
@@ -191,7 +191,7 @@ func TestLoadDoesntBreakHTTPGet(t *testing.T) {
 	// inside script that is imported
 
 	tb := httpmultibin.NewHTTPMultiBin(t)
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(tb.Replacer.Replace(`
 		import http from "k6/http";
 		export function A() {
@@ -237,7 +237,7 @@ func TestLoadDoesntBreakHTTPGet(t *testing.T) {
 
 func TestLoadGlobalVarsAreNotSharedBetweenVUs(t *testing.T) {
 	t.Parallel()
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	require.NoError(t, inMemoryFS.WriteFile("/A.js", []byte(`
 		var globalVar = 0;
 		export function A() {
@@ -295,7 +295,7 @@ func TestLoadGlobalVarsAreNotSharedBetweenVUs(t *testing.T) {
 func TestLoadCycle(t *testing.T) {
 	t.Parallel()
 	// This is mostly the example from https://hacks.mozilla.org/2018/03/es-modules-a-cartoon-deep-dive/
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 
 	require.NoError(t, inMemoryFS.WriteFile("/counter.js", []byte(`
 			let message = require("./main.js").message;
@@ -355,7 +355,7 @@ func TestLoadCycleBinding(t *testing.T) {
 	t.Parallel()
 	// This is mostly the example from
 	// http://2ality.com/2015/07/es6-module-exports.html#why-export-bindings
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 
 	require.NoError(t, inMemoryFS.WriteFile("/a.js", []byte(`
 		import {bar} from './b.js';
@@ -419,7 +419,7 @@ func TestLoadCycleBinding(t *testing.T) {
 
 func TestBrowserified(t *testing.T) {
 	t.Parallel()
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 
 	require.NoError(t, inMemoryFS.WriteFile("/browserified.js", []byte(`
 		(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.npmlibs = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
@@ -488,7 +488,7 @@ func TestBrowserified(t *testing.T) {
 func TestLoadingUnexistingModuleDoesntPanic(t *testing.T) {
 	t.Parallel()
 
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 
 	data := `var b;
 			try {
@@ -536,7 +536,7 @@ func TestLoadingUnexistingModuleDoesntPanic(t *testing.T) {
 func TestLoadingSourceMapsDoesntErrorOut(t *testing.T) {
 	t.Parallel()
 
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	data := `exports.default = function() {}
 //# sourceMappingURL=test.min.js.map`
 	require.NoError(t, inMemoryFS.WriteFile("/script.js", []byte(data), 0o644))

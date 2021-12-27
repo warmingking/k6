@@ -48,7 +48,7 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/netext"
 	"go.k6.io/k6/lib/types"
@@ -78,7 +78,7 @@ type Runner struct {
 
 // New returns a new Runner for the provide source
 func New(
-	logger *logrus.Logger, src *loader.SourceData, filesystems map[string]fsext.FS, rtOpts lib.RuntimeOptions,
+	logger *logrus.Logger, src *loader.SourceData, filesystems map[string]fs.RWFS, rtOpts lib.RuntimeOptions,
 	builtinMetrics *metrics.BuiltinMetrics, registry *metrics.Registry,
 ) (*Runner, error) {
 	bundle, err := NewBundle(logger, src, filesystems, rtOpts, registry)

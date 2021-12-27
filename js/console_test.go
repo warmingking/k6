@@ -37,7 +37,7 @@ import (
 
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/loader"
@@ -80,16 +80,16 @@ func TestConsoleContext(t *testing.T) {
 
 func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) (*Runner, error) {
 	var (
-		fs     = fsext.NewInMemoryFS()
-		rtOpts = lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)}
-		logger = testutils.NewLogger(tb)
+		fileSys fs.RWFS = fs.NewInMemoryFS()
+		rtOpts          = lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)}
+		logger          = testutils.NewLogger(tb)
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
-		case fsext.FS:
-			fs = opt
+		case fs.RWFS:
+			fileSys = opt
 		case afero.Fs:
-			fs = fsext.NewFS(opt)
+			fileSys = fs.NewAferoBased(opt)
 		case lib.RuntimeOptions:
 			rtOpts = opt
 		case *logrus.Logger:
@@ -104,7 +104,7 @@ func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) 
 			URL:  &url.URL{Path: filename, Scheme: "file"},
 			Data: []byte(data),
 		},
-		map[string]fsext.FS{"file": fs, "https": fsext.NewInMemoryFS()},
+		map[string]fs.RWFS{"file": fileSys, "https": fs.NewInMemoryFS()},
 		rtOpts,
 		builtinMetrics,
 		registry,

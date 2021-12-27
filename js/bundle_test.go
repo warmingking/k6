@@ -41,6 +41,7 @@ import (
 
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
@@ -52,16 +53,16 @@ const isWindows = runtime.GOOS == "windows"
 
 func getSimpleBundle(tb testing.TB, filename, data string, opts ...interface{}) (*Bundle, error) {
 	var (
-		fs                        = fsext.NewInMemoryFS()
-		rtOpts                    = lib.RuntimeOptions{}
-		logger logrus.FieldLogger = testutils.NewLogger(tb)
+		fileSys fs.RWFS            = fs.NewInMemoryFS()
+		rtOpts                     = lib.RuntimeOptions{}
+		logger  logrus.FieldLogger = testutils.NewLogger(tb)
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
 		case afero.Fs:
-			fs = fsext.NewFS(opt)
-		case fsext.FS:
-			fs = opt
+			fileSys = fs.NewAferoBased(opt)
+		case fs.RWFS:
+			fileSys = opt
 		case lib.RuntimeOptions:
 			rtOpts = opt
 		case logrus.FieldLogger:
@@ -74,7 +75,7 @@ func getSimpleBundle(tb testing.TB, filename, data string, opts ...interface{}) 
 			URL:  &url.URL{Path: filename, Scheme: "file"},
 			Data: []byte(data),
 		},
-		map[string]fsext.FS{"file": fs, "https": fsext.NewInMemoryFS()},
+		map[string]fs.RWFS{"file": fileSys, "https": fs.NewInMemoryFS()},
 		rtOpts,
 		metrics.NewRegistry(),
 	)
@@ -682,22 +683,22 @@ func TestOpen(t *testing.T) {
 			isError:  true,
 		},
 	}
-	fss := map[string]func() (fsext.FS, string, func()){
-		"MemMapFS": func() (fsext.FS, string, func()) {
-			fs := fsext.NewInMemoryFS()
-			require.NoError(t, fs.Afero().MkdirAll("/path/to", 0o755))
-			require.NoError(t, fs.WriteFile("/path/to/file.txt", []byte(`hi`), 0o644))
-			return fs, "", func() {}
+	fileSystems := map[string]func() (fs.RWFS, string, func()){
+		"MemMapFS": func() (fs.RWFS, string, func()) {
+			inMemoryFS := fs.NewInMemoryFS()
+			require.NoError(t, inMemoryFS.MkdirAll("/path/to", 0o755))
+			require.NoError(t, inMemoryFS.WriteFile("/path/to/file.txt", []byte(`hi`), 0o644))
+			return inMemoryFS, "", func() {}
 		},
-		"OsFS": func() (fsext.FS, string, func()) {
+		"OsFS": func() (fs.RWFS, string, func()) {
 			prefix, err := ioutil.TempDir("", "k6_open_test")
 			require.NoError(t, err)
-			osFS := fsext.NewFS(afero.NewOsFs())
+			osFS := fs.NewAferoBased(afero.NewOsFs())
 			filePath := filepath.Join(prefix, "/path/to/file.txt")
-			require.NoError(t, osFS.Afero().MkdirAll(filepath.Join(prefix, "/path/to"), 0o755))
+			require.NoError(t, osFS.MkdirAll(filepath.Join(prefix, "/path/to"), 0o755))
 			require.NoError(t, osFS.WriteFile(filePath, []byte(`hi`), 0o644))
 			if isWindows {
-				osFS = fsext.NewFS(fsext.NewTrimFilePathSeparatorFs(osFS.Afero()))
+				osFS = fs.NewAferoBased(fsext.NewTrimFilePathSeparatorFs(osFS.Afero()))
 			}
 			return osFS, prefix, func() { require.NoError(t, os.RemoveAll(prefix)) }
 		},
@@ -705,7 +706,7 @@ func TestOpen(t *testing.T) {
 
 	logger := testutils.NewLogger(t)
 
-	for name, fsInit := range fss {
+	for name, fsInit := range fileSystems {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			for _, tCase := range testCases {
@@ -713,9 +714,10 @@ func TestOpen(t *testing.T) {
 
 				testFunc := func(t *testing.T) {
 					t.Parallel()
-					fs, prefix, cleanUp := fsInit()
+
+					fileSys, prefix, cleanUp := fsInit()
 					defer cleanUp()
-					fs = fsext.NewFS(afero.NewReadOnlyFs(fs.Afero()))
+					fileSys = fs.NewAferoBased(afero.NewReadOnlyFs(fileSys.Afero()))
 					openPath := tCase.openPath
 					// if fullpath prepend prefix
 					if openPath != "" && (openPath[0] == '/' || openPath[0] == '\\') {
@@ -732,7 +734,7 @@ func TestOpen(t *testing.T) {
 						export let file = open("` + openPath + `");
 						export default function() { return file };`
 
-					sourceBundle, err := getSimpleBundle(t, filepath.ToSlash(filepath.Join(prefix, pwd, "script.js")), data, fs)
+					sourceBundle, err := getSimpleBundle(t, filepath.ToSlash(filepath.Join(prefix, pwd, "script.js")), data, fileSys)
 					if tCase.isError {
 						assert.Error(t, err)
 						return
@@ -952,8 +954,8 @@ func TestBundleMakeArchive(t *testing.T) {
 		t.Run(tc.cm.String(), func(t *testing.T) {
 			t.Parallel()
 
-			inMemoryFS := fsext.NewInMemoryFS()
-			_ = inMemoryFS.Afero().MkdirAll("/path/to", 0o755)
+			inMemoryFS := fs.NewInMemoryFS()
+			_ = inMemoryFS.MkdirAll("/path/to", 0o755)
 			_ = inMemoryFS.WriteFile("/path/to/file.txt", []byte(`hi`), 0o644)
 			_ = inMemoryFS.WriteFile("/path/to/exclaim.js", []byte(tc.exclaim), 0o644)
 

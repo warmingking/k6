@@ -54,7 +54,7 @@ import (
 	"go.k6.io/k6/js/modules/k6/ws"
 	"go.k6.io/k6/lib"
 	_ "go.k6.io/k6/lib/executor" // TODO: figure out something better
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
@@ -496,8 +496,8 @@ func TestRunnerIntegrationImports(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				t.Parallel()
 
-				inMemoryFS := fsext.NewInMemoryFS()
-				require.NoError(t, inMemoryFS.Afero().MkdirAll("/path/to", 0o755))
+				inMemoryFS := fs.NewInMemoryFS()
+				require.NoError(t, inMemoryFS.MkdirAll("/path/to", 0o755))
 				require.NoError(t, inMemoryFS.WriteFile("/path/to/lib.js", []byte(`exports.default = "hi!";`), 0o644))
 
 				r1, err := getSimpleRunner(t, data.filename, fmt.Sprintf(`
@@ -1564,7 +1564,7 @@ func TestInitContextForbidden(t *testing.T) {
 func TestArchiveRunningIntegrity(t *testing.T) {
 	t.Parallel()
 
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	data := `
 			var fput = open("/home/somebody/test.json");
 			exports.options = { setupTimeout: "10s", teardownTimeout: "10s" };
@@ -1618,7 +1618,7 @@ func TestArchiveRunningIntegrity(t *testing.T) {
 func TestArchiveNotPanicking(t *testing.T) {
 	t.Parallel()
 
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	require.NoError(t, inMemoryFS.WriteFile("/non/existent", []byte(`42`), os.ModePerm))
 	r1, err := getSimpleRunner(t, "/script.js", `
 			var fput = open("/non/existent");
@@ -1627,7 +1627,7 @@ func TestArchiveNotPanicking(t *testing.T) {
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()
-	arc.Filesystems = map[string]fsext.FS{"file": fsext.NewInMemoryFS()}
+	arc.Filesystems = map[string]fs.RWFS{"file": fs.NewInMemoryFS()}
 	registry := metrics.NewRegistry()
 	builtinMetrics := metrics.RegisterBuiltinMetrics(registry)
 	r2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
@@ -1886,7 +1886,7 @@ func TestVUPanic(t *testing.T) {
 }
 
 type multiFileTestCase struct {
-	fses       map[string]fsext.FS
+	fses       map[string]fs.RWFS
 	rtOpts     lib.RuntimeOptions
 	cwd        string
 	script     string
@@ -1969,7 +1969,7 @@ func TestComplicatedFileImportsForGRPC(t *testing.T) {
 		}, nil
 	}
 
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	protoFile, err := ioutil.ReadFile("../vendor/google.golang.org/grpc/test/grpc_testing/test.proto")
 	require.NoError(t, err)
 	require.NoError(t, inMemoryFS.WriteFile("/path/to/service.proto", protoFile, 0o644))
@@ -2004,7 +2004,7 @@ func TestComplicatedFileImportsForGRPC(t *testing.T) {
 		`, loadCode))
 
 		return multiFileTestCase{
-			fses:    map[string]fsext.FS{"file": inMemoryFS, "https": fsext.NewInMemoryFS()},
+			fses:    map[string]fs.RWFS{"file": inMemoryFS, "https": fs.NewInMemoryFS()},
 			rtOpts:  lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)},
 			samples: make(chan stats.SampleContainer, 100),
 			cwd:     cwd, expInitErr: expInitErr, expVUErr: expVUErr, script: script,

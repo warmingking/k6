@@ -31,12 +31,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 )
 
 // ReadSource Reads a source file from any supported destination.
 func ReadSource(
-	logger logrus.FieldLogger, src, pwd string, filesystems map[string]fsext.FS, stdin io.Reader,
+	logger logrus.FieldLogger, src, pwd string, filesystems map[string]fs.RWFS, stdin io.Reader,
 ) (*SourceData, error) {
 	if src == "-" {
 		data, err := ioutil.ReadAll(stdin)

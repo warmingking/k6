@@ -38,6 +38,7 @@ import (
 
 	"github.com/spf13/afero"
 
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/loader"
 )
@@ -84,7 +85,7 @@ type Archive struct {
 	Pwd    string   `json:"pwd"` // only for json
 	PwdURL *url.URL `json:"-"`
 
-	Filesystems map[string]fsext.FS `json:"-"`
+	Filesystems map[string]fs.RWFS `json:"-"`
 
 	// Environment variables
 	Env map[string]string `json:"env"`
@@ -95,20 +96,20 @@ type Archive struct {
 	Goos      string `json:"goos"`
 }
 
-func (arc *Archive) getFs(name string) fsext.FS {
-	fs, ok := arc.Filesystems[name]
+func (arc *Archive) getFs(name string) fs.RWFS { // nolint:ireturn
+	fileSys, ok := arc.Filesystems[name]
 	if !ok {
 		a := afero.NewMemMapFs()
 		if name == "file" {
 			a = newNormalizedFs(a)
 		}
 
-		fs = fsext.NewFS(a)
+		fileSys = fs.NewAferoBased(a)
 
-		arc.Filesystems[name] = fs
+		arc.Filesystems[name] = fileSys
 	}
 
-	return fs
+	return fileSys
 }
 
 func (arc *Archive) loadMetadataJSON(data []byte) (err error) {
@@ -135,7 +136,7 @@ func (arc *Archive) loadMetadataJSON(data []byte) (err error) {
 // ReadArchive reads an archive created by Archive.Write from a reader.
 func ReadArchive(in io.Reader) (*Archive, error) {
 	r := tar.NewReader(in)
-	arc := &Archive{Filesystems: make(map[string]fsext.FS, 2)}
+	arc := &Archive{Filesystems: make(map[string]fs.RWFS, 2)}
 	// initialize both fses
 	_ = arc.getFs("https")
 	_ = arc.getFs("file")
@@ -291,7 +292,7 @@ func (arc *Archive) Write(out io.Writer) error {
 		}
 		if cachedfs, ok := filesystem.Afero().(fsext.CacheOnReadFs); ok {
 			// FIXME: proper cache fetching
-			filesystem = fsext.NewFS(cachedfs.GetCachingFs())
+			filesystem = fs.NewAferoBased(cachedfs.GetCachingFs())
 		}
 
 		// A couple of things going on here:

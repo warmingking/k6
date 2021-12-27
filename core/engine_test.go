@@ -38,7 +38,7 @@ import (
 	"go.k6.io/k6/js"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/executor"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
@@ -744,7 +744,7 @@ func TestSetupException(t *testing.T) {
 	};
 	`)
 
-	memfs := fsext.NewInMemoryFS()
+	memfs := fs.NewInMemoryFS()
 	require.NoError(t, memfs.WriteFile("/bar.js", []byte(`
 	export default function () {
         baz();
@@ -758,7 +758,7 @@ func TestSetupException(t *testing.T) {
 	runner, err := js.New(
 		testutils.NewLogger(t),
 		&loader.SourceData{URL: &url.URL{Scheme: "file", Path: "/script.js"}, Data: script},
-		map[string]fsext.FS{"file": memfs},
+		map[string]fs.RWFS{"file": memfs},
 		lib.RuntimeOptions{},
 		builtinMetrics,
 		registry,

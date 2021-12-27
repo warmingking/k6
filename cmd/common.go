@@ -30,14 +30,14 @@ import (
 	"github.com/spf13/pflag"
 	"gopkg.in/guregu/null.v3"
 
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/types"
 )
 
 // Use these when interacting with fs and writing to terminal, makes a command testable
 var (
-	defaultFS               = fsext.NewFS(afero.NewOsFs()) // nolint:gochecknoglobals
-	defaultWriter io.Writer = os.Stdout                    // nolint:gochecknoglobals
+	defaultFS     fs.RWFS   = fs.NewAferoBased(afero.NewOsFs()) // nolint:gochecknoglobals
+	defaultWriter io.Writer = os.Stdout                         // nolint:gochecknoglobals
 )
 
 // Panic if the given error is not nil.

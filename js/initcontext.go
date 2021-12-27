@@ -48,7 +48,7 @@ import (
 	"go.k6.io/k6/js/modules/k6/metrics"
 	"go.k6.io/k6/js/modules/k6/ws"
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/loader"
 )
 
@@ -73,7 +73,7 @@ type InitContext struct {
 	ctxPtr *context.Context
 
 	// Filesystem to load files and scripts from with the map key being the scheme
-	filesystems map[string]fsext.FS
+	filesystems map[string]fs.RWFS
 	pwd         *url.URL
 
 	// Cache of loaded programs and files.
@@ -89,7 +89,7 @@ type InitContext struct {
 // NewInitContext creates a new initcontext with the provided arguments
 func NewInitContext(
 	logger logrus.FieldLogger, rt *goja.Runtime, c *compiler.Compiler, compatMode lib.CompatibilityMode,
-	ctxPtr *context.Context, filesystems map[string]fsext.FS, pwd *url.URL,
+	ctxPtr *context.Context, filesystems map[string]fs.RWFS, pwd *url.URL,
 ) *InitContext {
 	return &InitContext{
 		runtime:           rt,

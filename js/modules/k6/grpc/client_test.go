@@ -47,6 +47,7 @@ import (
 
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils/httpmultibin"
@@ -108,15 +109,15 @@ func TestClient(t *testing.T) {
 
 		cwd, err := os.Getwd()
 		require.NoError(t, err)
-		fs := afero.NewOsFs()
+		aferoFS := afero.NewOsFs()
 		if isWindows {
-			fs = fsext.NewTrimFilePathSeparatorFs(fs)
+			aferoFS = fsext.NewTrimFilePathSeparatorFs(aferoFS)
 		}
 		initEnv := &common.InitEnvironment{
 			Logger: logrus.New(),
 			CWD:    &url.URL{Path: cwd},
-			FileSystems: map[string]fsext.FS{
-				"file": fsext.NewFS(fs),
+			FileSystems: map[string]fs.RWFS{
+				"file": fs.NewAferoBased(aferoFS),
 			},
 		}
 

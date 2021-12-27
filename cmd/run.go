@@ -50,7 +50,7 @@ import (
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
 	"go.k6.io/k6/lib/consts"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/loader"
 	"go.k6.io/k6/ui/pb"
@@ -404,7 +404,7 @@ func runCmdFlagSet() *pflag.FlagSet {
 
 // Creates a new runner.
 func newRunner(
-	logger *logrus.Logger, src *loader.SourceData, typ string, filesystems map[string]fsext.FS, rtOpts lib.RuntimeOptions,
+	logger *logrus.Logger, src *loader.SourceData, typ string, filesystems map[string]fs.RWFS, rtOpts lib.RuntimeOptions,
 	builtinMetrics *metrics.BuiltinMetrics, registry *metrics.Registry,
 ) (runner lib.Runner, err error) {
 	switch typ {

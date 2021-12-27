@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/testutils"
 )
 
@@ -53,7 +53,7 @@ func TestGithub(t *testing.T) {
 	t.Run("not cached", func(t *testing.T) {
 		t.Parallel()
 
-		data, err := Load(logger, map[string]fsext.FS{"https": fsext.NewInMemoryFS()}, resolvedURL, path)
+		data, err := Load(logger, map[string]fs.RWFS{"https": fs.NewInMemoryFS()}, resolvedURL, path)
 		require.NoError(t, err)
 		assert.Equal(t, data.URL, resolvedURL)
 		assert.Equal(t, path, data.URL.String())
@@ -63,13 +63,13 @@ func TestGithub(t *testing.T) {
 	t.Run("cached", func(t *testing.T) {
 		t.Parallel()
 
-		inMemoryFS := fsext.NewInMemoryFS()
+		inMemoryFS := fs.NewInMemoryFS()
 		testData := []byte("test data")
 
 		err := inMemoryFS.WriteFile("/github.com/github/gitignore/Go.gitignore", testData, 0o644)
 		require.NoError(t, err)
 
-		data, err := Load(logger, map[string]fsext.FS{"https": inMemoryFS}, resolvedURL, path)
+		data, err := Load(logger, map[string]fs.RWFS{"https": inMemoryFS}, resolvedURL, path)
 		require.NoError(t, err)
 		assert.Equal(t, path, data.URL.String())
 		assert.Equal(t, data.Data, testData)

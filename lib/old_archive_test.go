@@ -32,10 +32,11 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 )
 
-func dumpMemMapFsToBuf(sourceFS fsext.FS) (*bytes.Buffer, error) {
+func dumpMemMapFsToBuf(sourceFS fs.RWFS) (*bytes.Buffer, error) {
 	resultBuffer := bytes.NewBuffer(nil)
 	tarWriter := tar.NewWriter(resultBuffer)
 
@@ -92,7 +93,7 @@ func TestOldArchive(t *testing.T) {
 		filename, data := filename, data
 		t.Run(filename, func(t *testing.T) {
 			metadata := `{"filename": "` + filename + `", "options": {}}`
-			fs := makeMemMapFs(t, map[string][]byte{
+			inMemoryFS := makeMemMapFs(t, map[string][]byte{
 				// files
 				"/files/github.com/k6io/k6/samples/example.js": []byte(`github file`),
 				"/files/cdnjs.com/packages/Faker":              []byte(`faker file`),
@@ -110,10 +111,10 @@ func TestOldArchive(t *testing.T) {
 				"/metadata.json":                                  []byte(metadata),
 			})
 
-			buf, err := dumpMemMapFsToBuf(fs)
+			buf, err := dumpMemMapFsToBuf(inMemoryFS)
 			require.NoError(t, err)
 
-			expectedFilesystems := map[string]fsext.FS{
+			expectedFilesystems := map[string]fs.RWFS{
 				"file": makeMemMapFs(t, map[string][]byte{
 					"/C:/something/path":  []byte(`windows file`),
 					"/absolulte/path":     []byte(`unix file`),

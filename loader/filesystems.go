@@ -25,11 +25,12 @@ import (
 
 	"github.com/spf13/afero"
 
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 )
 
 // CreateFilesystems creates the correct filesystem map for the current OS
-func CreateFilesystems() map[string]fsext.FS {
+func CreateFilesystems() map[string]fs.RWFS {
 	// We want to eliminate disk access at runtime, so we set up a memory mapped cache that's
 	// written every time something is read from the real filesystem. This cache is then used for
 	// successive spawns to read from (they have no access to the real disk).
@@ -41,8 +42,8 @@ func CreateFilesystems() map[string]fsext.FS {
 		// volumes
 		osfs = fsext.NewTrimFilePathSeparatorFs(osfs)
 	}
-	return map[string]fsext.FS{
-		"file":  fsext.NewFS(fsext.NewCacheOnReadFs(osfs, afero.NewMemMapFs(), 0)),
-		"https": fsext.NewInMemoryFS(),
+	return map[string]fs.RWFS{
+		"file":  fs.NewAferoBased(fsext.NewCacheOnReadFs(osfs, afero.NewMemMapFs(), 0)),
+		"https": fs.NewInMemoryFS(),
 	}
 }

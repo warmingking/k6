@@ -31,7 +31,7 @@ import (
 	"gopkg.in/guregu/null.v3"
 
 	"go.k6.io/k6/lib"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 	"go.k6.io/k6/lib/testutils"
 	"go.k6.io/k6/loader"
@@ -318,7 +318,7 @@ func testRuntimeOptionsCase(t *testing.T, tc runtimeOptionsTestCase) {
 	}
 	fmt.Fprint(jsCode, "}")
 
-	inMemoryFS := fsext.NewInMemoryFS()
+	inMemoryFS := fs.NewInMemoryFS()
 	require.NoError(t, inMemoryFS.WriteFile("/script.js", jsCode.Bytes(), 0o644))
 
 	registry := metrics.NewRegistry()
@@ -327,7 +327,7 @@ func testRuntimeOptionsCase(t *testing.T, tc runtimeOptionsTestCase) {
 		testutils.NewLogger(t),
 		&loader.SourceData{Data: jsCode.Bytes(), URL: &url.URL{Path: "/script.js", Scheme: "file"}},
 		typeJS,
-		map[string]fsext.FS{"file": inMemoryFS},
+		map[string]fs.RWFS{"file": inMemoryFS},
 		rtOpts,
 		builtinMetrics,
 		registry,

@@ -35,7 +35,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	"go.k6.io/k6/lib/fsext"
+	"go.k6.io/k6/lib/fs"
 )
 
 // SourceData wraps a source file; data and filename.
@@ -168,7 +168,7 @@ func Dir(old *url.URL) *url.URL {
 // for a given scheme which is they key of the map. If the scheme is https then a request will
 // be made if the files is not found in the map and written to the map.
 func Load(
-	logger logrus.FieldLogger, filesystems map[string]fsext.FS, moduleSpecifier *url.URL, originalModuleSpecifier string,
+	logger logrus.FieldLogger, filesystems map[string]fs.RWFS, moduleSpecifier *url.URL, originalModuleSpecifier string,
 ) (*SourceData, error) {
 	logger.WithFields(
 		logrus.Fields{
