@@ -77,6 +77,21 @@ func (ab AferoBased) MkdirAll(path string, perm os.FileMode) error {
 	return ab.afero.MkdirAll(path, perm)
 }
 
+// OpenFile .
+func (ab AferoBased) OpenFile(name string, flag int, perm os.FileMode) (WFile, error) { // nolint:ireturn
+	return ab.afero.OpenFile(name, flag, perm)
+}
+
+// Stat .
+func (ab AferoBased) Stat(name string) (os.FileInfo, error) {
+	return ab.afero.Stat(name)
+}
+
+// Create .
+func (ab AferoBased) Create(name string) (WFile, error) { // nolint:ireturn
+	return ab.afero.Create(name)
+}
+
 type readDirFile struct {
 	afero.File
 }

@@ -447,7 +447,7 @@ func handleSummaryResult(fileSys fs.RWFS, stdOut, stdErr io.Writer, result map[s
 		case "stderr":
 			return stdErr, nil
 		default:
-			return fileSys.Afero().OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
+			return fileSys.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
 		}
 	}
 

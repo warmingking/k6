@@ -120,7 +120,7 @@ func readDiskConfig(fileSys fs.RWFS) (Config, string, error) {
 	}
 
 	// Try to see if the file exists in the supplied filesystem
-	if _, err := fileSys.Afero().Stat(realConfigFilePath); err != nil {
+	if _, err := fileSys.Stat(realConfigFilePath); err != nil {
 		if os.IsNotExist(err) && configFilePath == "" {
 			// If the file doesn't exist, but it was the default config file (i.e. the user
 			// didn't specify anything), silence the error

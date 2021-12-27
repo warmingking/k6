@@ -114,11 +114,11 @@ func getConvertCmd() *cobra.Command {
 					return err
 				}
 			} else {
-				outputFile, err := defaultFS.Afero().Create(convertOutput)
+				outputFile, err := defaultFS.Create(convertOutput)
 				if err != nil {
 					return err
 				}
-				if _, err := outputFile.WriteString(script); err != nil {
+				if _, err := outputFile.Write([]byte(script)); err != nil {
 					return err
 				}
 				if err := outputFile.Sync(); err != nil {
