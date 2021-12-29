@@ -327,7 +327,7 @@ func testRuntimeOptionsCase(t *testing.T, tc runtimeOptionsTestCase) {
 		testutils.NewLogger(t),
 		&loader.SourceData{Data: jsCode.Bytes(), URL: &url.URL{Path: "/script.js", Scheme: "file"}},
 		typeJS,
-		map[string]fs.RWFS{"file": inMemoryFS},
+		map[string]fs.ReadWriteFS{"file": inMemoryFS},
 		rtOpts,
 		builtinMetrics,
 		registry,

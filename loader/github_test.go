@@ -53,7 +53,7 @@ func TestGithub(t *testing.T) {
 	t.Run("not cached", func(t *testing.T) {
 		t.Parallel()
 
-		data, err := Load(logger, map[string]fs.RWFS{"https": fs.NewInMemoryFS()}, resolvedURL, path)
+		data, err := Load(logger, map[string]fs.ReadWriteFS{"https": fs.NewInMemoryFS()}, resolvedURL, path)
 		require.NoError(t, err)
 		assert.Equal(t, data.URL, resolvedURL)
 		assert.Equal(t, path, data.URL.String())
@@ -69,7 +69,7 @@ func TestGithub(t *testing.T) {
 		err := inMemoryFS.WriteFile("/github.com/github/gitignore/Go.gitignore", testData, 0o644)
 		require.NoError(t, err)
 
-		data, err := Load(logger, map[string]fs.RWFS{"https": inMemoryFS}, resolvedURL, path)
+		data, err := Load(logger, map[string]fs.ReadWriteFS{"https": inMemoryFS}, resolvedURL, path)
 		require.NoError(t, err)
 		assert.Equal(t, path, data.URL.String())
 		assert.Equal(t, data.Data, testData)

@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	_ fs.FS = (*AferoBased)(nil)
-	_ RWFS  = (*AferoBased)(nil)
+	_ fs.FS       = (*AferoBased)(nil)
+	_ ReadWriteFS = (*AferoBased)(nil)
 )
 
 // AferoBased is the implementation of the fs.RWFS, based on the afero
@@ -78,7 +78,7 @@ func (ab AferoBased) MkdirAll(path string, perm os.FileMode) error {
 }
 
 // OpenFile .
-func (ab AferoBased) OpenFile(name string, flag int, perm os.FileMode) (WFile, error) { // nolint:ireturn
+func (ab AferoBased) OpenFile(name string, flag int, perm os.FileMode) (WritableFile, error) { // nolint:ireturn
 	return ab.afero.OpenFile(name, flag, perm)
 }
 
@@ -88,7 +88,7 @@ func (ab AferoBased) Stat(name string) (os.FileInfo, error) {
 }
 
 // Create .
-func (ab AferoBased) Create(name string) (WFile, error) { // nolint:ireturn
+func (ab AferoBased) Create(name string) (WritableFile, error) { // nolint:ireturn
 	return ab.afero.Create(name)
 }
 

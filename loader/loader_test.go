@@ -115,7 +115,7 @@ func TestLoad(t *testing.T) {
 	}()
 
 	t.Run("Local", func(t *testing.T) {
-		filesystems := make(map[string]fs.RWFS)
+		filesystems := make(map[string]fs.ReadWriteFS)
 		filesystems["file"] = fs.NewInMemoryFS()
 
 		assert.NoError(t, filesystems["file"].MkdirAll("/path/to", 0o755))
@@ -160,7 +160,7 @@ func TestLoad(t *testing.T) {
 	})
 
 	t.Run("Remote", func(t *testing.T) {
-		filesystems := map[string]fs.RWFS{"https": fs.NewInMemoryFS()}
+		filesystems := map[string]fs.ReadWriteFS{"https": fs.NewInMemoryFS()}
 
 		t.Run("From local", func(t *testing.T) {
 			root, err := url.Parse("file:///")
@@ -223,7 +223,7 @@ func TestLoad(t *testing.T) {
 		moduleSpecifierURL, err := loader.Resolve(root, moduleSpecifier)
 		require.NoError(t, err)
 
-		filesystems := map[string]fs.RWFS{"https": fs.NewInMemoryFS()}
+		filesystems := map[string]fs.ReadWriteFS{"https": fs.NewInMemoryFS()}
 		src, err := loader.Load(logger, filesystems, moduleSpecifierURL, moduleSpecifier)
 
 		require.NoError(t, err)
@@ -252,7 +252,7 @@ func TestLoad(t *testing.T) {
 			{"HOST", "some-path-that-doesnt-exist.js"},
 		}
 
-		filesystems := map[string]fs.RWFS{"https": fs.NewInMemoryFS()}
+		filesystems := map[string]fs.ReadWriteFS{"https": fs.NewInMemoryFS()}
 		for _, data := range testData {
 			moduleSpecifier := data.moduleSpecifier
 			t.Run(data.name, func(t *testing.T) {

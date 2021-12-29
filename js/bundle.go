@@ -73,7 +73,7 @@ type BundleInstance struct {
 
 // NewBundle creates a new bundle from a source file and a filesystem.
 func NewBundle(
-	logger logrus.FieldLogger, src *loader.SourceData, filesystems map[string]fs.RWFS, rtOpts lib.RuntimeOptions,
+	logger logrus.FieldLogger, src *loader.SourceData, filesystems map[string]fs.ReadWriteFS, rtOpts lib.RuntimeOptions,
 	registry *metrics.Registry,
 ) (*Bundle, error) {
 	compatMode, err := lib.ValidateCompatibilityMode(rtOpts.CompatibilityMode.String)

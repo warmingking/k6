@@ -53,13 +53,13 @@ const isWindows = runtime.GOOS == "windows"
 
 func getSimpleBundle(tb testing.TB, filename, data string, opts ...interface{}) (*Bundle, error) {
 	var (
-		fileSys fs.RWFS            = fs.NewInMemoryFS()
+		fileSys fs.ReadWriteFS     = fs.NewInMemoryFS()
 		rtOpts                     = lib.RuntimeOptions{}
 		logger  logrus.FieldLogger = testutils.NewLogger(tb)
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
-		case fs.RWFS:
+		case fs.ReadWriteFS:
 			fileSys = opt
 		case lib.RuntimeOptions:
 			rtOpts = opt
@@ -73,7 +73,7 @@ func getSimpleBundle(tb testing.TB, filename, data string, opts ...interface{}) 
 			URL:  &url.URL{Path: filename, Scheme: "file"},
 			Data: []byte(data),
 		},
-		map[string]fs.RWFS{"file": fileSys, "https": fs.NewInMemoryFS()},
+		map[string]fs.ReadWriteFS{"file": fileSys, "https": fs.NewInMemoryFS()},
 		rtOpts,
 		metrics.NewRegistry(),
 	)
@@ -681,14 +681,14 @@ func TestOpen(t *testing.T) {
 			isError:  true,
 		},
 	}
-	fileSystems := map[string]func() (fs.RWFS, string, func()){
-		"MemMapFS": func() (fs.RWFS, string, func()) {
+	fileSystems := map[string]func() (fs.ReadWriteFS, string, func()){
+		"MemMapFS": func() (fs.ReadWriteFS, string, func()) {
 			inMemoryFS := fs.NewInMemoryFS()
 			require.NoError(t, inMemoryFS.MkdirAll("/path/to", 0o755))
 			require.NoError(t, inMemoryFS.WriteFile("/path/to/file.txt", []byte(`hi`), 0o644))
 			return inMemoryFS, "", func() {}
 		},
-		"OsFS": func() (fs.RWFS, string, func()) {
+		"OsFS": func() (fs.ReadWriteFS, string, func()) {
 			prefix, err := ioutil.TempDir("", "k6_open_test")
 			require.NoError(t, err)
 			osFS := fs.NewAferoBased(afero.NewOsFs())

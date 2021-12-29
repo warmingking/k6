@@ -85,7 +85,7 @@ type Archive struct {
 	Pwd    string   `json:"pwd"` // only for json
 	PwdURL *url.URL `json:"-"`
 
-	Filesystems map[string]fs.RWFS `json:"-"`
+	Filesystems map[string]fs.ReadWriteFS `json:"-"`
 
 	// Environment variables
 	Env map[string]string `json:"env"`
@@ -96,7 +96,7 @@ type Archive struct {
 	Goos      string `json:"goos"`
 }
 
-func (arc *Archive) getFs(name string) fs.RWFS { // nolint
+func (arc *Archive) getFs(name string) fs.ReadWriteFS { // nolint
 	fileSys, ok := arc.Filesystems[name]
 	if !ok {
 		a := afero.NewMemMapFs()
@@ -136,7 +136,7 @@ func (arc *Archive) loadMetadataJSON(data []byte) (err error) {
 // ReadArchive reads an archive created by Archive.Write from a reader.
 func ReadArchive(in io.Reader) (*Archive, error) {
 	r := tar.NewReader(in)
-	arc := &Archive{Filesystems: make(map[string]fs.RWFS, 2)}
+	arc := &Archive{Filesystems: make(map[string]fs.ReadWriteFS, 2)}
 	// initialize both fses
 	_ = arc.getFs("https")
 	_ = arc.getFs("file")
@@ -324,7 +324,7 @@ func (arc *Archive) Write(out io.Writer) error {
 			return err
 		})
 
-		if err = fsext.Walk(filesystem.Afero(), afero.FilePathSeparator, walkFunc); err != nil {
+		if err = fsext.Walk(filesystem.Afero(), fs.FilePathSeparator, walkFunc); err != nil {
 			return err
 		}
 		if len(files) == 0 {

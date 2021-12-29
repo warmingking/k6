@@ -1627,7 +1627,7 @@ func TestArchiveNotPanicking(t *testing.T) {
 	require.NoError(t, err)
 
 	arc := r1.MakeArchive()
-	arc.Filesystems = map[string]fs.RWFS{"file": fs.NewInMemoryFS()}
+	arc.Filesystems = map[string]fs.ReadWriteFS{"file": fs.NewInMemoryFS()}
 	registry := metrics.NewRegistry()
 	builtinMetrics := metrics.RegisterBuiltinMetrics(registry)
 	r2, err := NewFromArchive(testutils.NewLogger(t), arc, lib.RuntimeOptions{}, builtinMetrics, registry)
@@ -1886,7 +1886,7 @@ func TestVUPanic(t *testing.T) {
 }
 
 type multiFileTestCase struct {
-	fses       map[string]fs.RWFS
+	fses       map[string]fs.ReadWriteFS
 	rtOpts     lib.RuntimeOptions
 	cwd        string
 	script     string
@@ -2004,7 +2004,7 @@ func TestComplicatedFileImportsForGRPC(t *testing.T) {
 		`, loadCode))
 
 		return multiFileTestCase{
-			fses:    map[string]fs.RWFS{"file": inMemoryFS, "https": fs.NewInMemoryFS()},
+			fses:    map[string]fs.ReadWriteFS{"file": inMemoryFS, "https": fs.NewInMemoryFS()},
 			rtOpts:  lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)},
 			samples: make(chan stats.SampleContainer, 100),
 			cwd:     cwd, expInitErr: expInitErr, expVUErr: expVUErr, script: script,

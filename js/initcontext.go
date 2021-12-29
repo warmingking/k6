@@ -73,7 +73,7 @@ type InitContext struct {
 	ctxPtr *context.Context
 
 	// Filesystem to load files and scripts from with the map key being the scheme
-	filesystems map[string]fs.RWFS
+	filesystems map[string]fs.ReadWriteFS
 	pwd         *url.URL
 
 	// Cache of loaded programs and files.
@@ -89,7 +89,7 @@ type InitContext struct {
 // NewInitContext creates a new initcontext with the provided arguments
 func NewInitContext(
 	logger logrus.FieldLogger, rt *goja.Runtime, c *compiler.Compiler, compatMode lib.CompatibilityMode,
-	ctxPtr *context.Context, filesystems map[string]fs.RWFS, pwd *url.URL,
+	ctxPtr *context.Context, filesystems map[string]fs.ReadWriteFS, pwd *url.URL,
 ) *InitContext {
 	return &InitContext{
 		runtime:           rt,
@@ -296,17 +296,17 @@ func (i *InitContext) Open(ctx context.Context, filename string, args ...string)
 		filename = filepath.Join(i.pwd.Path, filename)
 	}
 	filename = filepath.Clean(filename)
-	fs := i.filesystems["file"]
-	if filename[0:1] != afero.FilePathSeparator {
-		filename = afero.FilePathSeparator + filename
+	fileSys := i.filesystems["file"]
+	if filename[0:1] != fs.FilePathSeparator {
+		filename = fs.FilePathSeparator + filename
 	}
 	// Workaround for https://github.com/spf13/afero/issues/201
-	if isDir, err := afero.IsDir(fs.Afero(), filename); err != nil {
+	if isDir, err := afero.IsDir(fileSys.Afero(), filename); err != nil {
 		return nil, err
 	} else if isDir {
 		return nil, fmt.Errorf("open() can't be used with directories, path: %q", filename)
 	}
-	data, err := fs.ReadFile(filename)
+	data, err := fileSys.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}

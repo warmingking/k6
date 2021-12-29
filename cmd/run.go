@@ -403,8 +403,13 @@ func runCmdFlagSet() *pflag.FlagSet {
 
 // Creates a new runner.
 func newRunner(
-	logger *logrus.Logger, src *loader.SourceData, typ string, filesystems map[string]fs.RWFS, rtOpts lib.RuntimeOptions,
-	builtinMetrics *metrics.BuiltinMetrics, registry *metrics.Registry,
+	logger *logrus.Logger,
+	src *loader.SourceData,
+	typ string,
+	filesystems map[string]fs.ReadWriteFS,
+	rtOpts lib.RuntimeOptions,
+	builtinMetrics *metrics.BuiltinMetrics,
+	registry *metrics.Registry,
 ) (runner lib.Runner, err error) {
 	switch typ {
 	case "":
@@ -437,7 +442,7 @@ func detectType(data []byte) string {
 	return typeJS
 }
 
-func handleSummaryResult(fileSys fs.RWFS, stdOut, stdErr io.Writer, result map[string]io.Reader) error {
+func handleSummaryResult(fileSys fs.ReadWriteFS, stdOut, stdErr io.Writer, result map[string]io.Reader) error {
 	var errs []error
 
 	getWriter := func(path string) (io.Writer, error) {

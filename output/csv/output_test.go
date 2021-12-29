@@ -184,7 +184,7 @@ func TestSampleToRow(t *testing.T) {
 	}
 }
 
-func readUnCompressedFile(fileName string, fileSys fs.RWFS) string {
+func readUnCompressedFile(fileName string, fileSys fs.ReadWriteFS) string {
 	csvbytes, err := fileSys.ReadFile(fileName)
 	if err != nil {
 		return err.Error()
@@ -193,7 +193,7 @@ func readUnCompressedFile(fileName string, fileSys fs.RWFS) string {
 	return fmt.Sprintf("%s", csvbytes)
 }
 
-func readCompressedFile(fileName string, fileSys fs.RWFS) string {
+func readCompressedFile(fileName string, fileSys fs.ReadWriteFS) string {
 	file, err := fileSys.Open(fileName)
 	if err != nil {
 		return err.Error()
@@ -217,7 +217,7 @@ func TestRun(t *testing.T) {
 	testData := []struct {
 		samples        []stats.SampleContainer
 		fileName       string
-		fileReaderFunc func(fileName string, fs fs.RWFS) string
+		fileReaderFunc func(fileName string, fs fs.ReadWriteFS) string
 		outputContent  string
 	}{
 		{

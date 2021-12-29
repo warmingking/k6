@@ -758,7 +758,7 @@ func TestSetupException(t *testing.T) {
 	runner, err := js.New(
 		testutils.NewLogger(t),
 		&loader.SourceData{URL: &url.URL{Scheme: "file", Path: "/script.js"}, Data: script},
-		map[string]fs.RWFS{"file": memfs},
+		map[string]fs.ReadWriteFS{"file": memfs},
 		lib.RuntimeOptions{},
 		builtinMetrics,
 		registry,

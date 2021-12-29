@@ -43,7 +43,7 @@ type Params struct {
 	Environment    map[string]string
 	StdOut         io.Writer
 	StdErr         io.Writer
-	FS             fs.RWFS
+	FS             fs.ReadWriteFS
 	ScriptPath     *url.URL
 	ScriptOptions  lib.Options
 	RuntimeOptions lib.RuntimeOptions

@@ -79,13 +79,13 @@ func TestConsoleContext(t *testing.T) {
 
 func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) (*Runner, error) {
 	var (
-		fileSys fs.RWFS = fs.NewInMemoryFS()
-		rtOpts          = lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)}
-		logger          = testutils.NewLogger(tb)
+		fileSys fs.ReadWriteFS = fs.NewInMemoryFS()
+		rtOpts                 = lib.RuntimeOptions{CompatibilityMode: null.NewString("base", true)}
+		logger                 = testutils.NewLogger(tb)
 	)
 	for _, o := range opts {
 		switch opt := o.(type) {
-		case fs.RWFS:
+		case fs.ReadWriteFS:
 			fileSys = opt
 		case lib.RuntimeOptions:
 			rtOpts = opt
@@ -101,7 +101,7 @@ func getSimpleRunner(tb testing.TB, filename, data string, opts ...interface{}) 
 			URL:  &url.URL{Path: filename, Scheme: "file"},
 			Data: []byte(data),
 		},
-		map[string]fs.RWFS{"file": fileSys, "https": fs.NewInMemoryFS()},
+		map[string]fs.ReadWriteFS{"file": fileSys, "https": fs.NewInMemoryFS()},
 		rtOpts,
 		builtinMetrics,
 		registry,

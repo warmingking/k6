@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/metrics"
 )
@@ -34,7 +33,7 @@ import (
 // in the k6 init context. It can be accessed by calling common.GetInitEnv().
 type InitEnvironment struct {
 	Logger      logrus.FieldLogger
-	FileSystems map[string]fs.RWFS
+	FileSystems map[string]fs.ReadWriteFS
 	CWD         *url.URL
 	Registry    *metrics.Registry
 	// TODO: add RuntimeOptions and other properties, goja sources, etc.
@@ -58,8 +57,8 @@ func (ie *InitEnvironment) GetAbsFilePath(filename string) string {
 		filename = filepath.Join(ie.CWD.Path, filename)
 	}
 	filename = filepath.Clean(filename)
-	if filename[0:1] != afero.FilePathSeparator {
-		filename = afero.FilePathSeparator + filename
+	if filename[0:1] != fs.FilePathSeparator {
+		filename = fs.FilePathSeparator + filename
 	}
 	return filename
 }

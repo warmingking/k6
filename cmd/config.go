@@ -112,7 +112,7 @@ func getConfig(flags *pflag.FlagSet) (Config, error) {
 // an error will be returned.
 // If there's no custom config specified and no file exists in the default config path, it will
 // return an empty config struct, the default config location and *no* error.
-func readDiskConfig(fileSys fs.RWFS) (Config, string, error) {
+func readDiskConfig(fileSys fs.ReadWriteFS) (Config, string, error) {
 	realConfigFilePath := configFilePath
 	if realConfigFilePath == "" {
 		// The user didn't specify K6_CONFIG or --config, use the default path
@@ -140,7 +140,7 @@ func readDiskConfig(fileSys fs.RWFS) (Config, string, error) {
 
 // Serializes the configuration to a JSON file and writes it in the supplied
 // location on the supplied filesystem
-func writeDiskConfig(fileSys fs.RWFS, configPath string, conf Config) error {
+func writeDiskConfig(fileSys fs.ReadWriteFS, configPath string, conf Config) error {
 	data, err := json.MarshalIndent(conf, "", "  ")
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func readEnvConfig() (Config, error) {
 // - set some defaults if they weren't previously specified
 // TODO: add better validation, more explicit default values and improve consistency between formats
 // TODO: accumulate all errors and differentiate between the layers?
-func getConsolidatedConfig(fileSys fs.RWFS, cliConf Config, runner lib.Runner) (conf Config, err error) {
+func getConsolidatedConfig(fileSys fs.ReadWriteFS, cliConf Config, runner lib.Runner) (conf Config, err error) {
 	// TODO: use errext.WithExitCodeIfNone(err, exitcodes.InvalidConfig) where it makes sense?
 
 	fileConf, _, err := readDiskConfig(fileSys)

@@ -91,7 +91,7 @@ func TestNewJSRunnerWithCustomModule(t *testing.T) {
 			URL:  &url.URL{Path: "blah", Scheme: "file"},
 			Data: []byte(script),
 		},
-		map[string]fs.RWFS{"file": fs.NewInMemoryFS(), "https": fs.NewInMemoryFS()},
+		map[string]fs.ReadWriteFS{"file": fs.NewInMemoryFS(), "https": fs.NewInMemoryFS()},
 		rtOptions,
 		builtinMetrics,
 		registry,

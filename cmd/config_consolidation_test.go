@@ -149,7 +149,7 @@ type file struct {
 	filepath, contents string
 }
 
-func getFS(files []file) fs.RWFS { // nolint:ireturn
+func getFS(files []file) fs.ReadWriteFS { // nolint:ireturn
 	inMemoryFS := fs.NewInMemoryFS()
 	for _, f := range files {
 		must(inMemoryFS.WriteFile(f.filepath, []byte(f.contents), 0o644)) // modes don't matter in the afero.MemMapFs
@@ -157,7 +157,7 @@ func getFS(files []file) fs.RWFS { // nolint:ireturn
 	return inMemoryFS
 }
 
-func defaultConfig(jsonConfig string) fs.RWFS { // nolint:ireturn
+func defaultConfig(jsonConfig string) fs.ReadWriteFS { // nolint:ireturn
 	return getFS([]file{{defaultConfigFilePath, jsonConfig}})
 }
 
@@ -167,7 +167,7 @@ type opts struct {
 	cli    []string
 	env    []string
 	runner *lib.Options
-	fs     fs.RWFS
+	fs     fs.ReadWriteFS
 
 	// TODO: remove this when the configuration is more reproducible and sane...
 	// We use a func, because initializing a FlagSet that points to variables

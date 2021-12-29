@@ -36,8 +36,8 @@ import (
 
 // Use these when interacting with fs and writing to terminal, makes a command testable
 var (
-	defaultFS     fs.RWFS   = fs.NewAferoBased(afero.NewOsFs()) // nolint:gochecknoglobals
-	defaultWriter io.Writer = os.Stdout                         // nolint:gochecknoglobals
+	defaultFS     fs.ReadWriteFS = fs.NewAferoBased(afero.NewOsFs()) // nolint:gochecknoglobals
+	defaultWriter io.Writer      = os.Stdout                         // nolint:gochecknoglobals
 )
 
 // Panic if the given error is not nil.

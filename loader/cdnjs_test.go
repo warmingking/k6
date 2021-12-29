@@ -88,7 +88,7 @@ func TestCDNJS(t *testing.T) {
 			require.Empty(t, resolvedURL.Scheme)
 			require.Equal(t, path, resolvedURL.Opaque)
 
-			data, err := Load(logger, map[string]fs.RWFS{"https": fs.NewInMemoryFS()}, resolvedURL, path)
+			data, err := Load(logger, map[string]fs.ReadWriteFS{"https": fs.NewInMemoryFS()}, resolvedURL, path)
 			require.NoError(t, err)
 			assert.Equal(t, resolvedURL, data.URL)
 			assert.NotEmpty(t, data.Data)
@@ -116,7 +116,7 @@ func TestCDNJS(t *testing.T) {
 		pathURL, err := url.Parse(src)
 		require.NoError(t, err)
 
-		_, err = Load(logger, map[string]fs.RWFS{"https": fs.NewInMemoryFS()}, pathURL, path)
+		_, err = Load(logger, map[string]fs.ReadWriteFS{"https": fs.NewInMemoryFS()}, pathURL, path)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found: https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/nonexistent.js")
 	})

@@ -78,7 +78,7 @@ type Runner struct {
 
 // New returns a new Runner for the provide source
 func New(
-	logger *logrus.Logger, src *loader.SourceData, filesystems map[string]fs.RWFS, rtOpts lib.RuntimeOptions,
+	logger *logrus.Logger, src *loader.SourceData, filesystems map[string]fs.ReadWriteFS, rtOpts lib.RuntimeOptions,
 	builtinMetrics *metrics.BuiltinMetrics, registry *metrics.Registry,
 ) (*Runner, error) {
 	bundle, err := NewBundle(logger, src, filesystems, rtOpts, registry)

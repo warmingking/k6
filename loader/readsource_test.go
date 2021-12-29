@@ -64,7 +64,7 @@ func TestReadSourceSTDINCache(t *testing.T) {
 	aferoFS := afero.NewMemMapFs()
 
 	sourceData, err := ReadSource(logger, "-", "/path/to/pwd",
-		map[string]fs.RWFS{"file": fs.NewAferoBased(fsext.NewCacheOnReadFs(nil, aferoFS, 0))}, r)
+		map[string]fs.ReadWriteFS{"file": fs.NewAferoBased(fsext.NewCacheOnReadFs(nil, aferoFS, 0))}, r)
 
 	require.NoError(t, err)
 	require.Equal(t, &SourceData{
@@ -86,7 +86,7 @@ func TestReadSourceRelative(t *testing.T) {
 	inMemoryFS := fs.NewInMemoryFS()
 	require.NoError(t, inMemoryFS.WriteFile("/path/to/somewhere/script.js", data, 0o644))
 
-	sourceData, err := ReadSource(logger, "../somewhere/script.js", "/path/to/pwd", map[string]fs.RWFS{"file": inMemoryFS}, nil)
+	sourceData, err := ReadSource(logger, "../somewhere/script.js", "/path/to/pwd", map[string]fs.ReadWriteFS{"file": inMemoryFS}, nil)
 	require.NoError(t, err)
 	require.Equal(t, &SourceData{
 		URL:  &url.URL{Scheme: "file", Path: "/path/to/somewhere/script.js"},
@@ -107,7 +107,7 @@ func TestReadSourceAbsolute(t *testing.T) {
 	require.NoError(t, inMemoryFS.WriteFile("/a/b", data, 0o644))
 	require.NoError(t, inMemoryFS.WriteFile("/c/a/b", []byte("wrong"), 0o644))
 
-	sourceData, err := ReadSource(logger, "/a/b", "/c", map[string]fs.RWFS{"file": inMemoryFS}, reader)
+	sourceData, err := ReadSource(logger, "/a/b", "/c", map[string]fs.ReadWriteFS{"file": inMemoryFS}, reader)
 	require.NoError(t, err)
 	require.Equal(t, &SourceData{
 		URL:  &url.URL{Scheme: "file", Path: "/a/b"},
@@ -125,7 +125,7 @@ func TestReadSourceHttps(t *testing.T) {
 
 	require.NoError(t, inMemoryFS.WriteFile("/github.com/something", data, 0o644))
 	sourceData, err := ReadSource(logger, "https://github.com/something", "/c",
-		map[string]fs.RWFS{
+		map[string]fs.ReadWriteFS{
 			"file":  fs.NewInMemoryFS(),
 			"https": inMemoryFS,
 		}, nil)
@@ -147,7 +147,7 @@ func TestReadSourceHttpError(t *testing.T) {
 	require.NoError(t, inMemoryFS.WriteFile("/github.com/something", data, 0o644))
 
 	_, err := ReadSource(logger, "http://github.com/something", "/c",
-		map[string]fs.RWFS{
+		map[string]fs.ReadWriteFS{
 			"file":  fs.NewInMemoryFS(),
 			"https": inMemoryFS,
 		}, nil)
@@ -165,7 +165,7 @@ func TestReadSourceMissingFileError(t *testing.T) {
 	inMemoryFS := fs.NewInMemoryFS()
 
 	_, err := ReadSource(logger, "some file with spaces.js", "/c",
-		map[string]fs.RWFS{
+		map[string]fs.ReadWriteFS{
 			"file":  fs.NewInMemoryFS(),
 			"https": inMemoryFS,
 		}, nil)

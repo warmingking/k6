@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+	"go.k6.io/k6/lib/fs"
 )
 
 var _ afero.Lstater = (*ChangePathFs)(nil)
@@ -58,11 +59,11 @@ type ChangePathFunc func(name string) (path string, err error)
 // Heavily based on afero.BasePathFs
 func NewTrimFilePathSeparatorFs(source afero.Fs) *ChangePathFs {
 	return &ChangePathFs{source: source, fn: ChangePathFunc(func(name string) (path string, err error) {
-		if !strings.HasPrefix(name, afero.FilePathSeparator) {
+		if !strings.HasPrefix(name, fs.FilePathSeparator) {
 			return name, os.ErrNotExist
 		}
 
-		return filepath.Clean(strings.TrimPrefix(name, afero.FilePathSeparator)), nil
+		return filepath.Clean(strings.TrimPrefix(name, fs.FilePathSeparator)), nil
 	})}
 }
 

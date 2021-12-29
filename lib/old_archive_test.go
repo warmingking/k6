@@ -29,20 +29,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
 	"go.k6.io/k6/lib/fs"
 	"go.k6.io/k6/lib/fsext"
 )
 
-func dumpMemMapFsToBuf(sourceFS fs.RWFS) (*bytes.Buffer, error) {
+func dumpMemMapFsToBuf(sourceFS fs.ReadWriteFS) (*bytes.Buffer, error) {
 	resultBuffer := bytes.NewBuffer(nil)
 	tarWriter := tar.NewWriter(resultBuffer)
 
-	err := fsext.Walk(sourceFS.Afero(), afero.FilePathSeparator,
+	err := fsext.Walk(sourceFS.Afero(), fs.FilePathSeparator,
 		filepath.WalkFunc(func(filePath string, info os.FileInfo, err error) error {
-			if filePath == afero.FilePathSeparator {
+			if filePath == fs.FilePathSeparator {
 				return nil // skip the root
 			}
 			if err != nil {
@@ -114,7 +113,7 @@ func TestOldArchive(t *testing.T) {
 			buf, err := dumpMemMapFsToBuf(inMemoryFS)
 			require.NoError(t, err)
 
-			expectedFilesystems := map[string]fs.RWFS{
+			expectedFilesystems := map[string]fs.ReadWriteFS{
 				"file": makeMemMapFs(t, map[string][]byte{
 					"/C:/something/path":  []byte(`windows file`),
 					"/absolulte/path":     []byte(`unix file`),
