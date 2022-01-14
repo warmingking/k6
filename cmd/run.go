@@ -132,6 +132,13 @@ a commandline interface for interacting with it.`,
 			if err != nil {
 				return err
 			}
+			if !runtimeOptions.NoThresholds.Bool {
+				for _, thresholds := range conf.Options.Thresholds {
+					if err := thresholds.Parse(); err != nil {
+						return errext.WithExitCodeIfNone(err, exitcodes.InvalidConfig)
+					}
+				}
+			}
 
 			// Write options back to the runner too.
 			if err = initRunner.SetOptions(conf.Options); err != nil {
