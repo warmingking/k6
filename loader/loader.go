@@ -52,8 +52,8 @@ var (
 		expr *regexp.Regexp
 		name string
 	}{
-		{"cdnjs", cdnjs, regexp.MustCompile(`^cdnjs\.com/libraries/([^/]+)(?:/([(\d\.)]+-?[^/]*))?(?:/(.*))?$`)},
-		{"github", github, regexp.MustCompile(`^github\.com/([^/]+)/([^/]+)/(.*)$`)},
+		{name: "cdnjs", fn: cdnjs, expr: regexp.MustCompile(`^cdnjs\.com/libraries/([^/]+)(?:/([(\d\.)]+-?[^/]*))?(?:/(.*))?$`)},
+		{name: "github", fn: github, expr: regexp.MustCompile(`^github\.com/([^/]+)/([^/]+)/(.*)$`)},
 	}
 	httpsSchemeCouldntBeLoadedMsg = `The moduleSpecifier "%s" couldn't be retrieved from` +
 		` the resolved url "%s". Error : "%s"`
@@ -113,7 +113,7 @@ func Resolve(pwd *url.URL, moduleSpecifier string) (*url.URL, error) {
 
 		// we always want for the pwd to end in a slash, but filepath/path.Clean strips it so we read
 		// it if it's missing
-		var finalPwd = pwd
+		finalPwd := pwd
 		if pwd.Opaque != "" {
 			if !strings.HasSuffix(pwd.Opaque, "/") {
 				finalPwd = &url.URL{Opaque: pwd.Opaque + "/"}
@@ -203,7 +203,7 @@ func Load(
 		return nil, err
 	}
 	if scheme == "https" {
-		var finalModuleSpecifierURL = &url.URL{}
+		finalModuleSpecifierURL := &url.URL{}
 
 		switch {
 		case moduleSpecifier.Opaque != "": // This is loader
@@ -255,7 +255,7 @@ func resolveUsingLoaders(logger logrus.FieldLogger, name string) (*url.URL, erro
 }
 
 func loadRemoteURL(logger logrus.FieldLogger, u *url.URL) (*SourceData, error) {
-	var oldQuery = u.RawQuery
+	oldQuery := u.RawQuery
 	if u.RawQuery != "" {
 		u.RawQuery += "&"
 	}

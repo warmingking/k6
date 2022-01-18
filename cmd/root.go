@@ -50,8 +50,8 @@ var (
 	isDumbTerm = os.Getenv("TERM") == "dumb"
 	stdoutTTY  = !isDumbTerm && (isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()))
 	stderrTTY  = !isDumbTerm && (isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd()))
-	stdout     = &consoleWriter{colorable.NewColorableStdout(), stdoutTTY, outMutex, nil}
-	stderr     = &consoleWriter{colorable.NewColorableStderr(), stderrTTY, outMutex, nil}
+	stdout     = &consoleWriter{Writer: colorable.NewColorableStdout(), IsTTY: stdoutTTY, Mutex: outMutex}
+	stderr     = &consoleWriter{Writer: colorable.NewColorableStderr(), IsTTY: stderrTTY, Mutex: outMutex}
 )
 
 const (

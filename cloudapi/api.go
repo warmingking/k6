@@ -139,9 +139,9 @@ func (c *Client) TestFinished(referenceID string, thresholds ThresholdResult, ta
 		ResultStatus ResultStatus    `json:"result_status"`
 		RunStatus    lib.RunStatus   `json:"run_status"`
 	}{
-		resultStatus,
-		runStatus,
-		thresholds,
+		ResultStatus: resultStatus,
+		RunStatus:    runStatus,
+		Thresholds:   thresholds,
 	}
 
 	req, err := c.NewRequest("POST", url, data)
