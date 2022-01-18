@@ -52,14 +52,11 @@ func configFlagSet() *pflag.FlagSet {
 }
 
 type Config struct {
+	Collectors map[string]json.RawMessage `json:"collectors"`
 	lib.Options
-
 	Out           []string  `json:"out" envconfig:"K6_OUT"`
 	Linger        null.Bool `json:"linger" envconfig:"K6_LINGER"`
 	NoUsageReport null.Bool `json:"noUsageReport" envconfig:"K6_NO_USAGE_REPORT"`
-
-	// TODO: deprecate
-	Collectors map[string]json.RawMessage `json:"collectors"`
 }
 
 // Validate checks if all of the specified options make sense

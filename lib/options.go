@@ -139,8 +139,8 @@ type TLSAuthFields struct {
 
 // Defines a TLS client certificate to present to certain hosts.
 type TLSAuth struct {
-	TLSAuthFields
 	certificate *tls.Certificate
+	TLSAuthFields
 }
 
 func (c *TLSAuth) UnmarshalJSON(data []byte) error {
@@ -276,119 +276,47 @@ func ParseCIDR(s string) (*IPNet, error) {
 }
 
 type Options struct {
-	// Should the test start in a paused state?
-	Paused null.Bool `json:"paused" envconfig:"K6_PAUSED"`
-
-	// Initial values for VUs, max VUs, duration cap, iteration cap, and stages.
-	// See the Runner or Executor interfaces for more information.
-	VUs        null.Int           `json:"vus" envconfig:"K6_VUS"`
-	Duration   types.NullDuration `json:"duration" envconfig:"K6_DURATION"`
-	Iterations null.Int           `json:"iterations" envconfig:"K6_ITERATIONS"`
-	Stages     []Stage            `json:"stages" envconfig:"K6_STAGES"`
-
-	// TODO: remove the `ignored:"true"` from the field tags, it's there so that
-	// the envconfig library will ignore those fields.
-	//
-	// We should support specifying execution segments via environment
-	// variables, but we currently can't, because envconfig has this nasty bug
-	// (among others): https://github.com/kelseyhightower/envconfig/issues/113
-	Scenarios                ScenarioConfigs           `json:"scenarios,omitempty" ignored:"true"`
-	ExecutionSegment         *ExecutionSegment         `json:"executionSegment" ignored:"true"`
-	ExecutionSegmentSequence *ExecutionSegmentSequence `json:"executionSegmentSequence" ignored:"true"`
-
-	// Timeouts for the setup() and teardown() functions
-	NoSetup         null.Bool          `json:"noSetup" envconfig:"K6_NO_SETUP"`
-	SetupTimeout    types.NullDuration `json:"setupTimeout" envconfig:"K6_SETUP_TIMEOUT"`
-	NoTeardown      null.Bool          `json:"noTeardown" envconfig:"K6_NO_TEARDOWN"`
-	TeardownTimeout types.NullDuration `json:"teardownTimeout" envconfig:"K6_TEARDOWN_TIMEOUT"`
-
-	// Limit HTTP requests per second.
-	RPS null.Int `json:"rps" envconfig:"K6_RPS"`
-
-	// DNS handling configuration.
-	DNS types.DNSConfig `json:"dns" envconfig:"K6_DNS"`
-
-	// How many HTTP redirects do we follow?
-	MaxRedirects null.Int `json:"maxRedirects" envconfig:"K6_MAX_REDIRECTS"`
-
-	// Default User Agent string for HTTP requests.
-	UserAgent null.String `json:"userAgent" envconfig:"K6_USER_AGENT"`
-
-	// How many batch requests are allowed in parallel, in total and per host?
-	Batch        null.Int `json:"batch" envconfig:"K6_BATCH"`
-	BatchPerHost null.Int `json:"batchPerHost" envconfig:"K6_BATCH_PER_HOST"`
-
-	// Should all HTTP requests and responses be logged (excluding body)?
-	HTTPDebug null.String `json:"httpDebug" envconfig:"K6_HTTP_DEBUG"`
-
-	// Accept invalid or untrusted TLS certificates.
-	InsecureSkipTLSVerify null.Bool `json:"insecureSkipTLSVerify" envconfig:"K6_INSECURE_SKIP_TLS_VERIFY"`
-
-	// Specify TLS versions and cipher suites, and present client certificates.
-	TLSCipherSuites *TLSCipherSuites `json:"tlsCipherSuites" envconfig:"K6_TLS_CIPHER_SUITES"`
-	TLSVersion      *TLSVersions     `json:"tlsVersion" ignored:"true"`
-	TLSAuth         []*TLSAuth       `json:"tlsAuth" envconfig:"K6_TLSAUTH"`
-
-	// Throw warnings (eg. failed HTTP requests) as errors instead of simply logging them.
-	Throw null.Bool `json:"throw" envconfig:"K6_THROW"`
-
-	// Define thresholds; these take the form of 'metric=["snippet1", "snippet2"]'.
-	// To create a threshold on a derived metric based on tag queries ("submetrics"), create a
-	// metric on a nonexistent metric named 'real_metric{tagA:valueA,tagB:valueB}'.
-	Thresholds map[string]stats.Thresholds `json:"thresholds" envconfig:"K6_THRESHOLDS"`
-
-	// Blacklist IP ranges that tests may not contact. Mainly useful in hosted setups.
-	BlacklistIPs []*IPNet `json:"blacklistIPs" envconfig:"K6_BLACKLIST_IPS"`
-
-	// Block hostname patterns that tests may not contact.
-	BlockedHostnames types.NullHostnameTrie `json:"blockHostnames" envconfig:"K6_BLOCK_HOSTNAMES"`
-
-	// Hosts overrides dns entries for given hosts
-	Hosts map[string]*HostAddress `json:"hosts" envconfig:"K6_HOSTS"`
-
-	// Disable keep-alive connections
-	NoConnectionReuse null.Bool `json:"noConnectionReuse" envconfig:"K6_NO_CONNECTION_REUSE"`
-
-	// Do not reuse connections between VU iterations. This gives more realistic results (depending
-	// on what you're looking for), but you need to raise various kernel limits or you'll get
-	// errors about running out of file handles or sockets, or being unable to bind addresses.
-	NoVUConnectionReuse null.Bool `json:"noVUConnectionReuse" envconfig:"K6_NO_VU_CONNECTION_REUSE"`
-
-	// MinIterationDuration can be used to force VUs to pause between iterations if a specific
-	// iteration is shorter than the specified value.
-	MinIterationDuration types.NullDuration `json:"minIterationDuration" envconfig:"K6_MIN_ITERATION_DURATION"`
-
-	// These values are for third party collectors' benefit.
-	// Can't be set through env vars.
-	External map[string]json.RawMessage `json:"ext" ignored:"true"`
-
-	// Summary trend stats for trend metrics (response times) in CLI output
-	SummaryTrendStats []string `json:"summaryTrendStats" envconfig:"K6_SUMMARY_TREND_STATS"`
-
-	// Summary time unit for summary metrics (response times) in CLI output
-	SummaryTimeUnit null.String `json:"summaryTimeUnit" envconfig:"K6_SUMMARY_TIME_UNIT"`
-
-	// Which system tags to include with metrics ("method", "vu" etc.)
-	// Use pointer for identifying whether user provide any tag or not.
-	SystemTags *stats.SystemTagSet `json:"systemTags" envconfig:"K6_SYSTEM_TAGS"`
-
-	// Tags to be applied to all samples for this running
-	RunTags *stats.SampleTags `json:"tags" envconfig:"K6_TAGS"`
-
-	// Buffer size of the channel for metric samples; 0 means unbuffered
-	MetricSamplesBufferSize null.Int `json:"metricSamplesBufferSize" envconfig:"K6_METRIC_SAMPLES_BUFFER_SIZE"`
-
-	// Do not reset cookies after a VU iteration
-	NoCookiesReset null.Bool `json:"noCookiesReset" envconfig:"K6_NO_COOKIES_RESET"`
-
-	// Discard Http Responses Body
-	DiscardResponseBodies null.Bool `json:"discardResponseBodies" envconfig:"K6_DISCARD_RESPONSE_BODIES"`
-
-	// Redirect console logging to a file
-	ConsoleOutput null.String `json:"-" envconfig:"K6_CONSOLE_OUTPUT"`
-
-	// Specify client IP ranges and/or CIDR from which VUs will make requests
-	LocalIPs types.NullIPPool `json:"-" envconfig:"K6_LOCAL_IPS"`
+	ExecutionSegment         *ExecutionSegment           `json:"executionSegment" ignored:"true"`
+	TLSVersion               *TLSVersions                `json:"tlsVersion" ignored:"true"`
+	RunTags                  *stats.SampleTags           `json:"tags" envconfig:"K6_TAGS"`
+	SystemTags               *stats.SystemTagSet         `json:"systemTags" envconfig:"K6_SYSTEM_TAGS"`
+	TLSCipherSuites          *TLSCipherSuites            `json:"tlsCipherSuites" envconfig:"K6_TLS_CIPHER_SUITES"`
+	Scenarios                ScenarioConfigs             `json:"scenarios,omitempty" ignored:"true"`
+	ExecutionSegmentSequence *ExecutionSegmentSequence   `json:"executionSegmentSequence" ignored:"true"`
+	Thresholds               map[string]stats.Thresholds `json:"thresholds" envconfig:"K6_THRESHOLDS"`
+	External                 map[string]json.RawMessage  `json:"ext" ignored:"true"`
+	Hosts                    map[string]*HostAddress     `json:"hosts" envconfig:"K6_HOSTS"`
+	BlockedHostnames         types.NullHostnameTrie      `json:"blockHostnames" envconfig:"K6_BLOCK_HOSTNAMES"`
+	LocalIPs                 types.NullIPPool            `json:"-" envconfig:"K6_LOCAL_IPS"`
+	SummaryTrendStats        []string                    `json:"summaryTrendStats" envconfig:"K6_SUMMARY_TREND_STATS"`
+	BlacklistIPs             []*IPNet                    `json:"blacklistIPs" envconfig:"K6_BLACKLIST_IPS"`
+	SummaryTimeUnit          null.String                 `json:"summaryTimeUnit" envconfig:"K6_SUMMARY_TIME_UNIT"`
+	Stages                   []Stage                     `json:"stages" envconfig:"K6_STAGES"`
+	TLSAuth                  []*TLSAuth                  `json:"tlsAuth" envconfig:"K6_TLSAUTH"`
+	ConsoleOutput            null.String                 `json:"-" envconfig:"K6_CONSOLE_OUTPUT"`
+	HTTPDebug                null.String                 `json:"httpDebug" envconfig:"K6_HTTP_DEBUG"`
+	UserAgent                null.String                 `json:"userAgent" envconfig:"K6_USER_AGENT"`
+	DNS                      types.DNSConfig             `json:"dns" envconfig:"K6_DNS"`
+	SetupTimeout             types.NullDuration          `json:"setupTimeout" envconfig:"K6_SETUP_TIMEOUT"`
+	BatchPerHost             null.Int                    `json:"batchPerHost" envconfig:"K6_BATCH_PER_HOST"`
+	Batch                    null.Int                    `json:"batch" envconfig:"K6_BATCH"`
+	VUs                      null.Int                    `json:"vus" envconfig:"K6_VUS"`
+	MaxRedirects             null.Int                    `json:"maxRedirects" envconfig:"K6_MAX_REDIRECTS"`
+	RPS                      null.Int                    `json:"rps" envconfig:"K6_RPS"`
+	TeardownTimeout          types.NullDuration          `json:"teardownTimeout" envconfig:"K6_TEARDOWN_TIMEOUT"`
+	MetricSamplesBufferSize  null.Int                    `json:"metricSamplesBufferSize" envconfig:"K6_METRIC_SAMPLES_BUFFER_SIZE"`
+	Duration                 types.NullDuration          `json:"duration" envconfig:"K6_DURATION"`
+	MinIterationDuration     types.NullDuration          `json:"minIterationDuration" envconfig:"K6_MIN_ITERATION_DURATION"`
+	Iterations               null.Int                    `json:"iterations" envconfig:"K6_ITERATIONS"`
+	InsecureSkipTLSVerify    null.Bool                   `json:"insecureSkipTLSVerify" envconfig:"K6_INSECURE_SKIP_TLS_VERIFY"`
+	NoSetup                  null.Bool                   `json:"noSetup" envconfig:"K6_NO_SETUP"`
+	NoTeardown               null.Bool                   `json:"noTeardown" envconfig:"K6_NO_TEARDOWN"`
+	NoVUConnectionReuse      null.Bool                   `json:"noVUConnectionReuse" envconfig:"K6_NO_VU_CONNECTION_REUSE"`
+	NoConnectionReuse        null.Bool                   `json:"noConnectionReuse" envconfig:"K6_NO_CONNECTION_REUSE"`
+	NoCookiesReset           null.Bool                   `json:"noCookiesReset" envconfig:"K6_NO_COOKIES_RESET"`
+	DiscardResponseBodies    null.Bool                   `json:"discardResponseBodies" envconfig:"K6_DISCARD_RESPONSE_BODIES"`
+	Throw                    null.Bool                   `json:"throw" envconfig:"K6_THROW"`
+	Paused                   null.Bool                   `json:"paused" envconfig:"K6_PAUSED"`
 }
 
 // Returns the result of overwriting any fields with any that are set on the argument.

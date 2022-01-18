@@ -42,15 +42,13 @@ const executorNameErr = "the executor name should contain only numbers, latin le
 
 // BaseConfig contains the common config fields for all executors
 type BaseConfig struct {
-	Name         string             `json:"-"` // set via the JS object key
+	Tags         map[string]string  `json:"tags"`
+	Env          map[string]string  `json:"env"`
 	Type         string             `json:"executor"`
+	Name         string             `json:"-"`
+	Exec         null.String        `json:"exec"`
 	StartTime    types.NullDuration `json:"startTime"`
 	GracefulStop types.NullDuration `json:"gracefulStop"`
-	Env          map[string]string  `json:"env"`
-	Exec         null.String        `json:"exec"` // function name, externally validated
-	Tags         map[string]string  `json:"tags"`
-
-	// TODO: future extensions like distribution, others?
 }
 
 // NewBaseConfig returns a default base config with the default values

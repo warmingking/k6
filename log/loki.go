@@ -40,19 +40,18 @@ type lokiHook struct {
 	ctx            context.Context
 	fallbackLogger logrus.FieldLogger
 	lokiStopped    chan<- struct{}
-
-	addr          string
-	labels        [][2]string
-	ch            chan *logrus.Entry
-	limit         int
-	msgMaxSize    int
-	levels        []logrus.Level
-	allowedLabels []string
-	pushPeriod    time.Duration
-	client        *http.Client
-	profile       bool
-	droppedLabels map[string]string
-	droppedMsg    string
+	droppedLabels  map[string]string
+	ch             chan *logrus.Entry
+	client         *http.Client
+	addr           string
+	droppedMsg     string
+	levels         []logrus.Level
+	allowedLabels  []string
+	labels         [][2]string
+	pushPeriod     time.Duration
+	limit          int
+	msgMaxSize     int
+	profile        bool
 }
 
 func getDefaultLoki() *lokiHook {
@@ -426,8 +425,8 @@ func (pushMsg *lokiPushMessage) add(entry tmpMsg) {
 // sorting easier
 type tmpMsg struct {
 	labels map[string]string
-	t      int64
 	msg    string
+	t      int64
 }
 
 func (h *lokiHook) Fire(entry *logrus.Entry) error {
@@ -534,8 +533,8 @@ type stream struct {
 }
 
 type logEntry struct {
-	t   int64  // nanoseconds
-	msg string // maybe intern those as they are likely to be the same for an interval
+	msg string
+	t   int64
 }
 
 // rewrite this either with easyjson or with a custom marshalling

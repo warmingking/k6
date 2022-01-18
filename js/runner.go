@@ -564,26 +564,20 @@ func (r *Runner) getTimeoutFor(stage string) time.Duration {
 
 type VU struct {
 	BundleInstance
-
-	Runner    *Runner
-	Transport *http.Transport
-	Dialer    *netext.Dialer
-	CookieJar *cookiejar.Jar
-	TLSConfig *tls.Config
-	ID        uint64 // local to the current instance
-	IDGlobal  uint64 // global across all instances
-	iteration int64
-
-	Console *console
-	BPool   *bpool.BufferPool
-
-	Samples chan<- stats.SampleContainer
-
-	setupData goja.Value
-
-	state *lib.State
-	// count of iterations executed by this VU in each scenario
+	setupData    goja.Value
 	scenarioIter map[string]uint64
+	Dialer       *netext.Dialer
+	CookieJar    *cookiejar.Jar
+	TLSConfig    *tls.Config
+	state        *lib.State
+	Transport    *http.Transport
+	Runner       *Runner
+	Console      *console
+	BPool        *bpool.BufferPool
+	Samples      chan<- stats.SampleContainer
+	iteration    int64
+	ID           uint64
+	IDGlobal     uint64
 }
 
 // Verify that interfaces are implemented
@@ -596,11 +590,11 @@ var (
 type ActiveVU struct {
 	*VU
 	*lib.VUActivationParams
-	busy chan struct{}
-
-	scenarioName              string
-	getNextIterationCounters  func() (uint64, uint64)
-	scIterLocal, scIterGlobal uint64
+	busy                     chan struct{}
+	getNextIterationCounters func() (uint64, uint64)
+	scenarioName             string
+	scIterLocal              uint64
+	scIterGlobal             uint64
 }
 
 // GetID returns the unique VU ID.

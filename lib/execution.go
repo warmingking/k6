@@ -145,133 +145,24 @@ const (
 // around pausing, and uninitializedUnplannedVUs for restricting the number of
 // unplanned VUs being initialized.
 type ExecutionState struct {
-	// A copy of the options, so the different executors have access to them.
-	// They will need to access things like the current execution segment, the
-	// per-run metrics tags, etc.
-	//
-	// Obviously, they are not meant to be changed... They should be a constant
-	// during the execution of a single test, but we can't easily enforce that
-	// via the Go type system...
-	Options Options
-
-	ExecutionTuple *ExecutionTuple // TODO Rename, possibly move
-
-	// vus is the shared channel buffer that contains all of the VUs that have
-	// been initialized and aren't currently being used by a executor.
-	//
-	// It contains both pre-initialized (i.e. planned) VUs, as well as any
-	// unplanned VUs. Planned VUs are initialized before a test begins, while
-	// unplanned VUS can be initialized in the middle of the test run by a
-	// executor and have been relinquished after it has finished working with
-	// them. Usually, unplanned VUs are initialized by one of the arrival-rate
-	// executors, after they have exhausted their PreAllocatedVUs. After the
-	// executor is done with the VUs, it will put in this channel, so it could
-	// potentially be reused by other executors further along in the test.
-	//
-	// Different executors cooperatively borrow VUs from here when they are
-	// needed and return them when they are done with them. There's no central
-	// enforcement of correctness, i.e. that a executor takes more VUs from
-	// here than its execution plan has stipulated. The correctness guarantee
-	// lies with the actual executors - bugs in one can affect others.
-	//
-	// That's why the field is private and we force executors to use the
-	// GetPlannedVU(), GetUnplannedVU(), and ReturnVU() methods instead of work
-	// directly with the channel. These methods will emit a warning or can even
-	// return an error if retrieving a VU takes more than
-	// MaxTimeToWaitForPlannedVU.
-	vus chan InitializedVU
-
-	// The segmented index used to generate unique local (current k6 instance)
-	// and global (across k6 instances) VU IDs, starting from 1
-	// (for backwards compatibility...).
-	vuIDSegIndexMx *sync.Mutex
-	vuIDSegIndex   *SegmentedIndex
-
-	// TODO: add something similar, but for iterations? Currently, there isn't
-	// a straightforward way to get a unique sequential identifier per iteration
-	// in the context of a single k6 instance. Combining __VU and __ITER gives us
-	// a unique identifier, but it's unwieldy and somewhat cumbersome.
-
-	// Total number of currently initialized VUs. Generally equal to
-	// the VU ID minus 1, since initializedVUs starts from 0 and is
-	// incremented only after a VU is initialized, while the VU ID is
-	// incremented before a VU is initialized. It should always be greater than
-	// or equal to 0, but int64 is used for simplification of the used atomic
-	// arithmetic operations.
-	initializedVUs *int64
-
-	// Total number of unplanned VUs we haven't initialized yet. It starts
-	// being equal to GetMaxPossibleVUs(executionPlan)-GetMaxPlannedVUs(), and
-	// may stay that way if no unplanned VUs are initialized. Once it reaches 0,
-	// no more unplanned VUs can be initialized.
-	uninitializedUnplannedVUs *int64
-
-	// Injected when the execution scheduler's Init function is called, used for
-	// initializing unplanned VUs.
-	initVUFunc InitVUFunc
-
-	// The number of VUs that are currently executing the test script. This also
-	// includes any VUs that are in the process of gracefully winding down,
-	// either at the end of the test, or when VUs are ramping down. It should
-	// always be greater than or equal to 0, but int64 is used for
-	// simplification of the used atomic arithmetic operations.
-	activeVUs *int64
-
-	// The total number of full (i.e uninterrupted) iterations that have been
-	// completed so far.
-	fullIterationsCount *uint64
-
-	// The total number of iterations that have been interrupted during their
-	// execution. The potential interruption causes vary - end of a specified
-	// script `duration`, scaling down of VUs via `stages`, a user hitting
-	// Ctrl+C, change of `vus` via the externally controlled executor's REST
-	// API, etc.
+	resumeNotify               chan struct{}
+	ExecutionTuple             *ExecutionTuple
+	vus                        chan InitializedVU
+	vuIDSegIndexMx             *sync.Mutex
+	vuIDSegIndex               *SegmentedIndex
+	initializedVUs             *int64
+	uninitializedUnplannedVUs  *int64
+	initVUFunc                 InitVUFunc
+	activeVUs                  *int64
+	fullIterationsCount        *uint64
 	interruptedIterationsCount *uint64
-
-	// A machine-readable indicator in which the current state of the test
-	// execution is currently stored. Useful for the REST API and external
-	// observability of the k6 test run progress.
-	executionStatus *uint32
-
-	// A nanosecond UNIX timestamp that is set when the test is actually
-	// started. The default 0 value is used to denote that the test hasn't
-	// started yet...
-	startTime *int64
-
-	// A nanosecond UNIX timestamp that is set when the test ends, either
-	// by an early context cancel or at its regularly scheduled time.
-	// The default 0 value is used to denote that the test hasn't ended yet.
-	endTime *int64
-
-	// Stuff related to pausing follows. Read the docs in ExecutionScheduler for
-	// more information regarding how pausing works in k6.
-	//
-	// When we pause the execution in the middle of the test, we save the
-	// current timestamp in currentPauseTime. When we resume the execution, we
-	// set currentPauseTime back to 0 and we add the (time.Now() -
-	// currentPauseTime) duration to totalPausedDuration (unless the test hasn't
-	// started yet).
-	//
-	// Thus, the algorithm for GetCurrentTestRunDuration() is very
-	// straightforward:
-	//   - if the test hasn't started, return 0
-	//   - set endTime to:
-	//      - the current pauseTime, if not zero
-	//      - time.Now() otherwise
-	//   - return (endTime - startTime - totalPausedDuration)
-	//
-	// Quickly checking for IsPaused() just means comparing the currentPauseTime
-	// with 0, a single atomic operation.
-	//
-	// But if we want to wait until a script resumes, or be notified of the
-	// start/resume event from a channel (as part of a select{}), we have to
-	// acquire the pauseStateLock, get the current resumeNotify instance,
-	// release the lock and wait to read from resumeNotify (when it's closed by
-	// Resume()).
-	currentPauseTime    *int64
-	pauseStateLock      sync.RWMutex
-	totalPausedDuration time.Duration // only modified behind the lock
-	resumeNotify        chan struct{}
+	executionStatus            *uint32
+	startTime                  *int64
+	endTime                    *int64
+	currentPauseTime           *int64
+	Options                    Options
+	totalPausedDuration        time.Duration
+	pauseStateLock             sync.RWMutex
 }
 
 // NewExecutionState initializes all of the pointers in the ExecutionState

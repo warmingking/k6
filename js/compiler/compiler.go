@@ -130,20 +130,17 @@ func (c *Compiler) Transform(src, filename string, inputSrcMap []byte) (code str
 
 // Options are options to the compiler
 type Options struct {
-	CompatibilityMode lib.CompatibilityMode
 	SourceMapLoader   func(string) ([]byte, error)
+	CompatibilityMode lib.CompatibilityMode
 	Strict            bool
 }
 
 // compilationState is helper struct to keep the state of a compilation
 type compilationState struct {
-	// set when we couldn't load external source map so we can try parsing without loading it
+	compiler             *Compiler
+	srcMap               []byte
 	couldntLoadSourceMap bool
-	// srcMap is the current full sourceMap that has been generated read so far
-	srcMap []byte
-	main   bool
-
-	compiler *Compiler
+	main                 bool
 }
 
 // Compile the program in the given CompatibilityMode, wrapping it between pre and post code

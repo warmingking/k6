@@ -55,15 +55,11 @@ func init() {
 // arrival-rate executor.
 type RampingArrivalRateConfig struct {
 	BaseConfig
-	StartRate null.Int           `json:"startRate"`
-	TimeUnit  types.NullDuration `json:"timeUnit"`
-	Stages    []Stage            `json:"stages"`
-
-	// Initialize `PreAllocatedVUs` number of VUs, and if more than that are needed,
-	// they will be dynamically allocated, until `MaxVUs` is reached, which is an
-	// absolutely hard limit on the number of VUs the executor will use
-	PreAllocatedVUs null.Int `json:"preAllocatedVUs"`
-	MaxVUs          null.Int `json:"maxVUs"`
+	Stages          []Stage            `json:"stages"`
+	StartRate       null.Int           `json:"startRate"`
+	TimeUnit        types.NullDuration `json:"timeUnit"`
+	PreAllocatedVUs null.Int           `json:"preAllocatedVUs"`
+	MaxVUs          null.Int           `json:"maxVUs"`
 }
 
 // NewRampingArrivalRateConfig returns a RampingArrivalRateConfig with default values
@@ -174,8 +170,8 @@ func (varc RampingArrivalRateConfig) HasWork(et *lib.ExecutionTuple) bool {
 // TODO: combine with the ConstantArrivalRate?
 type RampingArrivalRate struct {
 	*BaseExecutor
-	config RampingArrivalRateConfig
 	et     *lib.ExecutionTuple
+	config RampingArrivalRateConfig
 }
 
 // Make sure we implement the lib.Executor interface.

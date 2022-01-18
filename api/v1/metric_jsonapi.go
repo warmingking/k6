@@ -36,9 +36,9 @@ type metricJSONAPI struct {
 }
 
 type metricData struct {
+	Attributes Metric `json:"attributes"`
 	Type       string `json:"type"`
 	ID         string `json:"id"`
-	Attributes Metric `json:"attributes"`
 }
 
 func newMetricEnvelope(m *stats.Metric, t time.Duration) metricJSONAPI {

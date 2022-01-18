@@ -491,12 +491,9 @@ func GetFilledExecutionSegmentSequence(
 // segment sequence that allows us to make fast and useful calculations, after
 // a somewhat slow initialization.
 type ExecutionSegmentSequenceWrapper struct {
-	ExecutionSegmentSequence       // a filled-out segment sequence
-	lcd                      int64 // pre-calculated least common denominator
-
-	// The striped offsets, i.e. the repeating indexes that "belong" to each
-	// execution segment in the sequence.
+	ExecutionSegmentSequence
 	offsets [][]int64
+	lcd     int64
 }
 
 // NewExecutionSegmentSequenceWrapper expects a filled-out execution segment
@@ -781,9 +778,11 @@ func (et *ExecutionTuple) GetNewExecutionTupleFromValue(value int64) (*Execution
 // See the documentation for ExecutionTuple above for a visual explanation of
 // how this iterator actually works.
 type SegmentedIndex struct {
-	start, lcd       int64
-	offsets          []int64
-	scaled, unscaled int64 // for both the first element(vu) is 1 not 0
+	offsets  []int64
+	start    int64
+	lcd      int64
+	scaled   int64
+	unscaled int64
 }
 
 // NewSegmentedIndex returns a pointer to a new SegmentedIndex instance,

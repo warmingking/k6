@@ -67,32 +67,18 @@ func newNormalizedFs(fs afero.Fs) afero.Fs {
 
 // An Archive is a rollup of all resources and options needed to reproduce a test identically elsewhere.
 type Archive struct {
-	// The runner to use, eg. "js".
-	Type string `json:"type"`
-
-	// Options to use.
-	Options Options `json:"options"`
-
-	// TODO: rewrite the encoding, decoding of json to use another type with only the fields it
-	// needs in order to remove Filename and Pwd from this
-	// Filename and contents of the main file being executed.
-	Filename    string   `json:"filename"` // only for json
-	FilenameURL *url.URL `json:"-"`
-	Data        []byte   `json:"-"`
-
-	// Working directory for resolving relative paths.
-	Pwd    string   `json:"pwd"` // only for json
-	PwdURL *url.URL `json:"-"`
-
-	Filesystems map[string]afero.Fs `json:"-"`
-
-	// Environment variables
-	Env map[string]string `json:"env"`
-
-	CompatibilityMode string `json:"compatibilityMode"`
-
-	K6Version string `json:"k6version"`
-	Goos      string `json:"goos"`
+	PwdURL            *url.URL            `json:"-"`
+	Filesystems       map[string]afero.Fs `json:"-"`
+	Env               map[string]string   `json:"env"`
+	FilenameURL       *url.URL            `json:"-"`
+	Options           Options             `json:"options"`
+	K6Version         string              `json:"k6version"`
+	Pwd               string              `json:"pwd"`
+	Type              string              `json:"type"`
+	Filename          string              `json:"filename"`
+	CompatibilityMode string              `json:"compatibilityMode"`
+	Goos              string              `json:"goos"`
+	Data              []byte              `json:"-"`
 }
 
 func (arc *Archive) getFs(name string) afero.Fs {

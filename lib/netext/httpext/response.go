@@ -73,22 +73,22 @@ type HTTPCookie struct {
 
 // Response is a representation of an HTTP response
 type Response struct {
-	RemoteIP       string                   `json:"remote_ip"`
-	RemotePort     int                      `json:"remote_port"`
-	URL            string                   `json:"url"`
-	Status         int                      `json:"status"`
-	StatusText     string                   `json:"status_text"`
-	Proto          string                   `json:"proto"`
+	Body           interface{}              `json:"body"`
 	Headers        map[string]string        `json:"headers"`
 	Cookies        map[string][]*HTTPCookie `json:"cookies"`
-	Body           interface{}              `json:"body"`
-	Timings        ResponseTimings          `json:"timings"`
+	Request        *Request                 `json:"request"`
+	OCSP           netext.OCSP              `json:"ocsp"`
+	StatusText     string                   `json:"status_text"`
+	Proto          string                   `json:"proto"`
+	URL            string                   `json:"url"`
+	RemoteIP       string                   `json:"remote_ip"`
 	TLSVersion     string                   `json:"tls_version"`
 	TLSCipherSuite string                   `json:"tls_cipher_suite"`
-	OCSP           netext.OCSP              `json:"ocsp"`
 	Error          string                   `json:"error"`
+	Timings        ResponseTimings          `json:"timings"`
+	RemotePort     int                      `json:"remote_port"`
+	Status         int                      `json:"status"`
 	ErrorCode      int                      `json:"error_code"`
-	Request        *Request                 `json:"request"`
 }
 
 // NewResponse returns an empty Response instance.

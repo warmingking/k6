@@ -46,37 +46,21 @@ const (
 
 // The Engine is the beating heart of k6.
 type Engine struct {
-	// TODO: Make most of the stuff here private! And think how to refactor the
-	// engine to be less stateful... it's currently one big mess of moving
-	// pieces, and you implicitly first have to call Init() and then Run() -
-	// maybe we should refactor it so we have a `Session` dauther-object that
-	// Init() returns? The only problem with doing this is the REST API - it
-	// expects to be able to get information from the Engine and is initialized
-	// before the Init() call...
-
 	ExecutionScheduler lib.ExecutionScheduler
+	Metrics            map[string]*stats.Metric
+	submetrics         map[string][]*stats.Submetric
+	thresholds         map[string]stats.Thresholds
+	Samples            chan stats.SampleContainer
+	logger             *logrus.Entry
+	builtinMetrics     *metrics.BuiltinMetrics
 	executionState     *lib.ExecutionState
-
-	Options        lib.Options
-	runtimeOptions lib.RuntimeOptions
-	outputs        []output.Output
-
-	logger   *logrus.Entry
-	stopOnce sync.Once
-	stopChan chan struct{}
-
-	Metrics     map[string]*stats.Metric
-	MetricsLock sync.Mutex
-
-	builtinMetrics *metrics.BuiltinMetrics
-	Samples        chan stats.SampleContainer
-
-	// Assigned to metrics upon first received sample.
-	thresholds map[string]stats.Thresholds
-	submetrics map[string][]*stats.Submetric
-
-	// Are thresholds tainted?
-	thresholdsTainted bool
+	stopChan           chan struct{}
+	Options            lib.Options
+	runtimeOptions     lib.RuntimeOptions
+	outputs            []output.Output
+	stopOnce           sync.Once
+	MetricsLock        sync.Mutex
+	thresholdsTainted  bool
 }
 
 // NewEngine instantiates a new Engine, without doing any heavy initialization.

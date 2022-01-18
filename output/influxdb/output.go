@@ -51,18 +51,16 @@ const (
 
 // Output is the influxdb Output struct
 type Output struct {
-	output.SampleBuffer
-
-	Client    client.Client
-	Config    Config
-	BatchConf client.BatchPointsConfig
-
+	Client          client.Client
 	logger          logrus.FieldLogger
-	params          output.Params
 	fieldKinds      map[string]FieldKind
-	periodicFlusher *output.PeriodicFlusher
 	semaphoreCh     chan struct{}
-	wg              sync.WaitGroup
+	periodicFlusher *output.PeriodicFlusher
+	BatchConf       client.BatchPointsConfig
+	params          output.Params
+	Config          Config
+	output.SampleBuffer
+	wg sync.WaitGroup
 }
 
 // New returns new influxdb output

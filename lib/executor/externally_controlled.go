@@ -186,13 +186,13 @@ func (mec ExternallyControlledConfig) HasWork(_ *lib.ExecutionTuple) bool {
 }
 
 type pauseEvent struct {
-	isPaused bool
 	err      chan error
+	isPaused bool
 }
 
 type updateConfigEvent struct {
-	newConfig ExternallyControlledConfigParams
 	err       chan error
+	newConfig ExternallyControlledConfigParams
 }
 
 // ExternallyControlled is an implementation of the old k6 executor that could be
@@ -200,12 +200,12 @@ type updateConfigEvent struct {
 // lib.PausableExecutor and the lib.LiveUpdatableExecutor interfaces.
 type ExternallyControlled struct {
 	*BaseExecutor
-	config               ExternallyControlledConfig
-	currentControlConfig ExternallyControlledConfigParams
 	configLock           *sync.RWMutex
 	newControlConfigs    chan updateConfigEvent
 	pauseEvents          chan pauseEvent
 	hasStarted           chan struct{}
+	config               ExternallyControlledConfig
+	currentControlConfig ExternallyControlledConfigParams
 }
 
 // Make sure we implement all the interfaces
@@ -377,14 +377,13 @@ func (rs *externallyControlledRunState) newManualVUHandle(
 type externallyControlledRunState struct {
 	ctx             context.Context
 	executor        *ExternallyControlled
-	startMaxVUs     int64             // the scaled number of initially configured MaxVUs
-	duration        time.Duration     // the total duration of the executor, could be 0 for infinite
-	activeVUsCount  *int64            // the current number of active VUs, used only for the progress display
-	maxVUs          *int64            // the current number of initialized VUs
-	vuHandles       []*manualVUHandle // handles for manipulating and tracking all of the VUs
-	currentlyPaused bool              // whether the executor is currently paused
-
-	runIteration func(context.Context, lib.ActiveVU) bool // a helper closure function that runs a single iteration
+	runIteration    func(context.Context, lib.ActiveVU) bool
+	activeVUsCount  *int64
+	maxVUs          *int64
+	vuHandles       []*manualVUHandle
+	duration        time.Duration
+	startMaxVUs     int64
+	currentlyPaused bool
 }
 
 // retrieveStartMaxVUs gets and initializes the (scaled) number of MaxVUs

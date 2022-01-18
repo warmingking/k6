@@ -54,8 +54,8 @@ import (
 
 type programWithSource struct {
 	pgm    *goja.Program
-	src    string
 	module *goja.Object
+	src    string
 }
 
 const openCantBeUsedOutsideInitContextMsg = `The "open()" function is only available in the init stage ` +
@@ -65,25 +65,15 @@ const openCantBeUsedOutsideInitContextMsg = `The "open()" function is only avail
 //
 // TODO: refactor most/all of this state away, use common.InitEnvironment instead
 type InitContext struct {
-	// Bound runtime; used to instantiate objects.
-	runtime  *goja.Runtime
-	compiler *compiler.Compiler
-
-	// Pointer to a context that bridged modules are invoked with.
-	ctxPtr *context.Context
-
-	// Filesystem to load files and scripts from with the map key being the scheme
-	filesystems map[string]afero.Fs
-	pwd         *url.URL
-
-	// Cache of loaded programs and files.
-	programs map[string]programWithSource
-
+	logger            logrus.FieldLogger
+	runtime           *goja.Runtime
+	ctxPtr            *context.Context
+	filesystems       map[string]afero.Fs
+	pwd               *url.URL
+	programs          map[string]programWithSource
+	compiler          *compiler.Compiler
+	modules           map[string]interface{}
 	compatibilityMode lib.CompatibilityMode
-
-	logger logrus.FieldLogger
-
-	modules map[string]interface{}
 }
 
 // NewInitContext creates a new initcontext with the provided arguments

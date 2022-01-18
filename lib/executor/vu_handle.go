@@ -88,23 +88,19 @@ short names for input:
 // - it's not required but preferable, if where possible to not reactivate VUs and to reuse context
 // as this speed ups the execution
 type vuHandle struct {
-	mutex                 *sync.Mutex
+	initVU                lib.InitializedVU
 	parentCtx             context.Context
-	getVU                 func() (lib.InitializedVU, error)
-	returnVU              func(lib.InitializedVU)
-	nextIterationCounters func() (uint64, uint64)
+	ctx                   context.Context
+	activeVU              lib.ActiveVU
+	mutex                 *sync.Mutex
 	config                *BaseConfig
-
-	initVU       lib.InitializedVU
-	activeVU     lib.ActiveVU
-	canStartIter chan struct{}
-
-	state stateType // see the table above for meanings
-	// stateH []int32 // helper for debugging
-
-	ctx    context.Context
-	cancel func()
-	logger *logrus.Entry
+	nextIterationCounters func() (uint64, uint64)
+	returnVU              func(lib.InitializedVU)
+	canStartIter          chan struct{}
+	cancel                func()
+	getVU                 func() (lib.InitializedVU, error)
+	logger                *logrus.Entry
+	state                 stateType
 }
 
 func newStoppedVUHandle(

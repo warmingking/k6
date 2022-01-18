@@ -39,8 +39,8 @@ import (
 
 // SourceData wraps a source file; data and filename.
 type SourceData struct {
-	Data []byte
 	URL  *url.URL
+	Data []byte
 }
 
 type loaderFunc func(logger logrus.FieldLogger, path string, parts []string) (string, error)
@@ -48,9 +48,9 @@ type loaderFunc func(logger logrus.FieldLogger, path string, parts []string) (st
 //nolint: gochecknoglobals
 var (
 	loaders = []struct {
-		name string
 		fn   loaderFunc
 		expr *regexp.Regexp
+		name string
 	}{
 		{"cdnjs", cdnjs, regexp.MustCompile(`^cdnjs\.com/libraries/([^/]+)(?:/([(\d\.)]+-?[^/]*))?(?:/(.*))?$`)},
 		{"github", github, regexp.MustCompile(`^github\.com/([^/]+)/([^/]+)/(.*)$`)},

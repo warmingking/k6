@@ -43,51 +43,24 @@ type DialContexter interface {
 
 // State provides the volatile state for a VU.
 type State struct {
-	// Global options.
-	Options Options
-
-	// Logger. Avoid using the global logger.
-	// TODO change to logrus.FieldLogger when there is time to fix all the tests
-	Logger *logrus.Logger
-
-	// Current group; all emitted metrics are tagged with this.
-	Group *Group
-
-	// Networking equipment.
-	Dialer DialContexter
-
-	// TODO: move a lot of the things below to the k6/http ModuleInstance, see
-	// https://github.com/grafana/k6/issues/2293.
-	Transport http.RoundTripper
-	CookieJar *cookiejar.Jar
-	TLSConfig *tls.Config
-
-	// Rate limits.
-	RPSLimit *rate.Limiter
-
-	// Sample channel, possibly buffered
-	Samples chan<- stats.SampleContainer
-
-	// Buffer pool; use instead of allocating fresh buffers when possible.
-	// TODO: maybe use https://golang.org/pkg/sync/#Pool ?
-	BPool *bpool.BufferPool
-
-	VUID, VUIDGlobal uint64
-	Iteration        int64
-	Tags             *TagMap
-	// These will be assigned on VU activation.
-	// Returns the iteration number of this VU in the current scenario.
-	GetScenarioVUIter func() uint64
-	// Returns the iteration number across all VUs in the current scenario
-	// unique to this single k6 instance.
-	// TODO: Maybe this doesn't belong here but in ScenarioState?
-	GetScenarioLocalVUIter func() uint64
-	// Returns the iteration number across all VUs in the current scenario
-	// unique globally across k6 instances (taking into account execution
-	// segments).
+	Dialer                  DialContexter
+	Transport               http.RoundTripper
+	BuiltinMetrics          *metrics.BuiltinMetrics
+	Group                   *Group
+	Logger                  *logrus.Logger
+	CookieJar               *cookiejar.Jar
+	TLSConfig               *tls.Config
+	RPSLimit                *rate.Limiter
+	Samples                 chan<- stats.SampleContainer
+	BPool                   *bpool.BufferPool
 	GetScenarioGlobalVUIter func() uint64
-
-	BuiltinMetrics *metrics.BuiltinMetrics
+	GetScenarioLocalVUIter  func() uint64
+	GetScenarioVUIter       func() uint64
+	Tags                    *TagMap
+	Options                 Options
+	Iteration               int64
+	VUIDGlobal              uint64
+	VUID                    uint64
 }
 
 // CloneTags makes a copy of the tags map and returns it.

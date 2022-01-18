@@ -53,14 +53,11 @@ var _ output.Output = &Output{}
 
 // Output sends result data to statsd daemons with the ability to send to datadog as well
 type Output struct {
-	output.SampleBuffer
-
+	logger          logrus.FieldLogger
 	periodicFlusher *output.PeriodicFlusher
-
-	config config
-
-	logger logrus.FieldLogger
-	client *statsd.Client
+	client          *statsd.Client
+	config          config
+	output.SampleBuffer
 }
 
 func (o *Output) dispatch(entry stats.Sample) error {

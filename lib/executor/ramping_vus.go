@@ -60,8 +60,8 @@ type Stage struct {
 // RampingVUsConfig stores the configuration for the stages executor
 type RampingVUsConfig struct {
 	BaseConfig
-	StartVUs         null.Int           `json:"startVUs"`
 	Stages           []Stage            `json:"stages"`
+	StartVUs         null.Int           `json:"startVUs"`
 	GracefulRampDown types.NullDuration `json:"gracefulRampDown"`
 }
 
@@ -485,9 +485,9 @@ func (vlvc RampingVUsConfig) HasWork(et *lib.ExecutionTuple) bool {
 // stages' duration.
 type RampingVUs struct {
 	*BaseExecutor
-	config RampingVUsConfig
-
-	rawSteps, gracefulSteps []lib.ExecutionStep
+	rawSteps      []lib.ExecutionStep
+	gracefulSteps []lib.ExecutionStep
+	config        RampingVUsConfig
 }
 
 // Make sure we implement the lib.Executor interface.
@@ -576,14 +576,13 @@ func (vlv *RampingVUs) Run(ctx context.Context, _ chan<- stats.SampleContainer, 
 // of the ramping VUs executor. It is used to track and modify various
 // details of the execution.
 type rampingVUsRunState struct {
-	executor       *RampingVUs
-	vuHandles      []*vuHandle // handles for manipulating and tracking all of the VUs
-	maxVUs         uint64      // the scaled number of initially configured MaxVUs
-	activeVUsCount *int64      // the current number of active VUs, used only for the progress display
 	started        time.Time
+	executor       *RampingVUs
+	activeVUsCount *int64
+	runIteration   func(context.Context, lib.ActiveVU) bool
+	vuHandles      []*vuHandle
+	maxVUs         uint64
 	wg             sync.WaitGroup
-
-	runIteration func(context.Context, lib.ActiveVU) bool // a helper closure function that runs a single iteration
 }
 
 func (rs *rampingVUsRunState) makeProgressFn(regular time.Duration) (progressFn func() (float64, []string)) {

@@ -35,29 +35,20 @@ import (
 // A Trail represents detailed information about an HTTP request.
 // You'd typically get one from a Tracer.
 type Trail struct {
-	EndTime time.Time
-
-	// Total connect time (Connecting + TLSHandshaking)
-	ConnDuration time.Duration
-
-	// Total request duration, excluding DNS lookup and connect time.
-	Duration time.Duration
-
-	Blocked        time.Duration // Waiting to acquire a connection.
-	Connecting     time.Duration // Connecting to remote host.
-	TLSHandshaking time.Duration // Executing TLS handshake.
-	Sending        time.Duration // Writing request.
-	Waiting        time.Duration // Waiting for first byte.
-	Receiving      time.Duration // Receiving response.
-
-	// Detailed connection information.
-	ConnReused     bool
+	EndTime        time.Time
 	ConnRemoteAddr net.Addr
-
-	Failed null.Bool
-	// Populated by SaveSamples()
-	Tags    *stats.SampleTags
-	Samples []stats.Sample
+	Tags           *stats.SampleTags
+	Samples        []stats.Sample
+	Connecting     time.Duration
+	TLSHandshaking time.Duration
+	Sending        time.Duration
+	Blocked        time.Duration
+	Receiving      time.Duration
+	Duration       time.Duration
+	ConnDuration   time.Duration
+	Waiting        time.Duration
+	Failed         null.Bool
+	ConnReused     bool
 }
 
 // SaveSamples populates the Trail's sample slice so they're accesible via GetSamples()
@@ -100,17 +91,16 @@ var _ stats.ConnectedSampleContainer = &Trail{}
 // It's NOT safe to reuse Tracers between requests.
 // Cheers, love, the cavalry's here.
 type Tracer struct {
+	connRemoteAddr       net.Addr
 	getConn              int64
 	connectStart         int64
 	connectDone          int64
-	tlsHandshakeStart    int64
 	tlsHandshakeDone     int64
 	gotConn              int64
 	wroteRequest         int64
 	gotFirstResponseByte int64
-
-	connReused     bool
-	connRemoteAddr net.Addr
+	tlsHandshakeStart    int64
+	connReused           bool
 }
 
 // Trace returns a premade ClientTrace that calls all of the Tracer's hooks.

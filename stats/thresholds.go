@@ -49,18 +49,12 @@ func init() {
 
 // Threshold is a representation of a single threshold for a single metric
 type Threshold struct {
-	// Source is the text based source of the threshold
-	Source string
-	// LastFailed is a makrer if the last testing of this threshold failed
-	LastFailed bool
-	// AbortOnFail marks if a given threshold fails that the whole test should be aborted
-	AbortOnFail bool
-	// AbortGracePeriod is a the minimum amount of time a test should be running before a failing
-	// this threshold will abort the test
+	pgm              *goja.Program
+	rt               *goja.Runtime
+	Source           string
 	AbortGracePeriod types.NullDuration
-
-	pgm *goja.Program
-	rt  *goja.Runtime
+	LastFailed       bool
+	AbortOnFail      bool
 }
 
 func newThreshold(src string, newThreshold *goja.Runtime, abortOnFail bool, gracePeriod types.NullDuration) (*Threshold, error) {

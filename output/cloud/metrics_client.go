@@ -40,12 +40,11 @@ import (
 
 // MetricsClient is a wrapper around the cloudapi.Client that is also capable of pushing
 type MetricsClient struct {
+	pushBufferPool sync.Pool
+	logger         logrus.FieldLogger
 	*cloudapi.Client
-	logger     logrus.FieldLogger
 	host       string
 	noCompress bool
-
-	pushBufferPool sync.Pool
 }
 
 // NewMetricsClient creates and initializes a new MetricsClient.

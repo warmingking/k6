@@ -55,12 +55,10 @@ const (
 
 // A writer that syncs writes with a mutex and, if the output is a TTY, clears before newlines.
 type consoleWriter struct {
-	Writer io.Writer
-	IsTTY  bool
-	Mutex  *sync.Mutex
-
-	// Used for flicker-free persistent objects like the progressbars
+	Writer         io.Writer
+	Mutex          *sync.Mutex
 	PersistentText func()
+	IsTTY          bool
 }
 
 func (w *consoleWriter) Write(p []byte) (n int, err error) {

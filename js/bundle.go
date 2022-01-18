@@ -45,18 +45,15 @@ import (
 // A Bundle is a self-contained bundle of scripts and resources.
 // You can use this to produce identical BundleInstance objects.
 type Bundle struct {
-	Filename *url.URL
-	Source   string
-	Program  *goja.Program
-	Options  lib.Options
-
-	BaseInitContext *InitContext
-
-	RuntimeOptions    lib.RuntimeOptions
-	CompatibilityMode lib.CompatibilityMode // parsed value
+	Filename          *url.URL
 	registry          *metrics.Registry
-
-	exports map[string]goja.Callable
+	Program           *goja.Program
+	BaseInitContext   *InitContext
+	exports           map[string]goja.Callable
+	Options           lib.Options
+	Source            string
+	RuntimeOptions    lib.RuntimeOptions
+	CompatibilityMode lib.CompatibilityMode
 }
 
 // A BundleInstance is a self-contained instance of a Bundle.

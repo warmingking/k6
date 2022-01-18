@@ -48,39 +48,25 @@ const TestName = "k6 test"
 
 // Output sends result data to the Load Impact cloud service.
 type Output struct {
-	config      cloudapi.Config
-	referenceID string
-
-	executionPlan []lib.ExecutionStep
-	duration      int64 // in seconds
-	thresholds    map[string][]*stats.Threshold
-	client        *MetricsClient
-
-	runStatus lib.RunStatus
-
-	bufferMutex      sync.Mutex
-	bufferHTTPTrails []*httpext.Trail
-	bufferSamples    []*Sample
-
-	logger logrus.FieldLogger
-	opts   lib.Options
-
-	// TODO: optimize this
-	//
-	// Since the real-time metrics refactoring (https://github.com/k6io/k6/pull/678),
-	// we should no longer have to handle metrics that have times long in the past. So instead of a
-	// map, we can probably use a simple slice (or even an array!) as a ring buffer to store the
-	// aggregation buckets. This should save us a some time, since it would make the lookups and WaitPeriod
-	// checks basically O(1). And even if for some reason there are occasional metrics with past times that
-	// don't fit in the chosen ring buffer size, we could just send them along to the buffer unaggregated
-	aggrBuckets map[int64]map[[3]string]aggregationBucket
-
-	stopSendingMetrics chan struct{}
-	stopAggregation    chan struct{}
+	logger             logrus.FieldLogger
+	aggrBuckets        map[int64]map[[3]string]aggregationBucket
 	aggregationDone    *sync.WaitGroup
-	stopOutput         chan struct{}
+	stopAggregation    chan struct{}
 	outputDone         *sync.WaitGroup
+	client             *MetricsClient
+	stopOutput         chan struct{}
+	stopSendingMetrics chan struct{}
 	engineStopFunc     func(error)
+	thresholds         map[string][]*stats.Threshold
+	opts               lib.Options
+	referenceID        string
+	bufferSamples      []*Sample
+	bufferHTTPTrails   []*httpext.Trail
+	executionPlan      []lib.ExecutionStep
+	config             cloudapi.Config
+	runStatus          lib.RunStatus
+	duration           int64
+	bufferMutex        sync.Mutex
 }
 
 // Verify that Output implements the wanted interfaces
