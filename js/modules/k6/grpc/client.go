@@ -231,138 +231,6 @@ func (c *Client) Connect(addr string, params map[string]interface{}) (bool, erro
 	return err != nil, err
 }
 
-func (c *Client) dial(
-	ctx context.Context,
-	addr string,
-	reflect bool,
-	options ...grpc.DialOption,
-) error {
-	opts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.FailOnNonTempDialError(true),
-		grpc.WithStatsHandler(c),
-		grpc.WithReturnConnectionError(),
-	}
-	opts = append(opts, options...)
-
-	var err error
-	c.conn, err = grpc.DialContext(ctx, addr, opts...)
-	if err != nil {
-		return err
-	}
-
-	if !reflect {
-		return nil
-	}
-
-	return c.reflect(ctx)
-}
-
-// reflect will use the grpc reflection api to make the file descriptors available to request.
-// It is called in the connect function the first time the Client.Connect function is called.
-func (c *Client) reflect(ctx context.Context) error {
-	client := reflectpb.NewServerReflectionClient(c.conn)
-	methodClient, err := client.ServerReflectionInfo(ctx)
-	if err != nil {
-		return fmt.Errorf("can't get server info: %w", err)
-	}
-	req := &reflectpb.ServerReflectionRequest{
-		MessageRequest: &reflectpb.ServerReflectionRequest_ListServices{},
-	}
-	resp, err := sendReceive(methodClient, req)
-	if err != nil {
-		return fmt.Errorf("can't list services: %w", err)
-	}
-	listResp := resp.GetListServicesResponse()
-	if listResp == nil {
-		return fmt.Errorf("can't list services, nil response")
-	}
-	fdset, err := resolveServiceFileDescriptors(methodClient, listResp)
-	if err != nil {
-		return fmt.Errorf("can't resolve services' file descriptors: %w", err)
-	}
-	_, err = c.convertToMethodInfo(fdset)
-	if err != nil {
-		err = fmt.Errorf("can't convert method info: %w", err)
-	}
-	return err
-}
-
-type fileDescriptorLookupKey struct {
-	Package string
-	Name    string
-}
-
-func resolveServiceFileDescriptors(
-	client sendReceiver,
-	res *reflectpb.ListServiceResponse,
-) (*descriptorpb.FileDescriptorSet, error) {
-	services := res.GetService()
-	seen := make(map[fileDescriptorLookupKey]bool, len(services))
-	fdset := &descriptorpb.FileDescriptorSet{
-		File: make([]*descriptorpb.FileDescriptorProto, 0, len(services)),
-	}
-
-	for _, service := range services {
-		req := &reflectpb.ServerReflectionRequest{
-			MessageRequest: &reflectpb.ServerReflectionRequest_FileContainingSymbol{
-				FileContainingSymbol: service.GetName(),
-			},
-		}
-		resp, err := sendReceive(client, req)
-		if err != nil {
-			return nil, fmt.Errorf("can't get method on service %q: %w", service, err)
-		}
-		fdResp := resp.GetFileDescriptorResponse()
-		for _, raw := range fdResp.GetFileDescriptorProto() {
-			var fdp descriptorpb.FileDescriptorProto
-			if err = proto.Unmarshal(raw, &fdp); err != nil {
-				return nil, fmt.Errorf("can't unmarshal proto on service %q: %w", service, err)
-			}
-			fdkey := fileDescriptorLookupKey{
-				Package: *fdp.Package,
-				Name:    *fdp.Name,
-			}
-			if seen[fdkey] {
-				// When a proto file contains declarations for multiple services
-				// then the same proto file is returned multiple times,
-				// this prevents adding the returned proto file as a duplicate.
-				continue
-			}
-			seen[fdkey] = true
-			fdset.File = append(fdset.File, &fdp)
-		}
-	}
-	return fdset, nil
-}
-
-// sendReceiver is a smaller interface for decoupling
-// from `reflectpb.ServerReflection_ServerReflectionInfoClient`,
-// that has the dependency from `grpc.ClientStream`,
-// which is too much in the case the requirement is to just make a reflection's request.
-// It makes the API more restricted and with a controlled surface,
-// in this way the testing should be easier also.
-type sendReceiver interface {
-	Send(*reflectpb.ServerReflectionRequest) error
-	Recv() (*reflectpb.ServerReflectionResponse, error)
-}
-
-// sendReceive sends a request to a reflection client and,
-// receives a response.
-func sendReceive(
-	client sendReceiver,
-	req *reflectpb.ServerReflectionRequest,
-) (*reflectpb.ServerReflectionResponse, error) {
-	if err := client.Send(req); err != nil {
-		return nil, fmt.Errorf("can't send request: %w", err)
-	}
-	resp, err := client.Recv()
-	if err != nil {
-		return nil, fmt.Errorf("can't receive response: %w", err)
-	}
-	return resp, nil
-}
-
 // Invoke creates and calls a unary RPC by fully qualified method name
 //nolint: funlen,gocognit,gocyclo,cyclop
 func (c *Client) Invoke(
@@ -522,26 +390,162 @@ func (c *Client) Close() error {
 	return err
 }
 
+func (c *Client) dial(
+	ctx context.Context,
+	addr string,
+	reflect bool,
+	options ...grpc.DialOption,
+) error {
+	opts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithStatsHandler(statsHandler{vu: c.vu}),
+		grpc.WithReturnConnectionError(),
+	}
+	opts = append(opts, options...)
+
+	var err error
+	c.conn, err = grpc.DialContext(ctx, addr, opts...)
+	if err != nil {
+		return err
+	}
+
+	if !reflect {
+		return nil
+	}
+
+	return c.reflect(ctx)
+}
+
+// reflect will use the grpc reflection api to make the file descriptors available to request.
+// It is called in the connect function the first time the Client.Connect function is called.
+func (c *Client) reflect(ctx context.Context) error {
+	client := reflectpb.NewServerReflectionClient(c.conn)
+	methodClient, err := client.ServerReflectionInfo(ctx)
+	if err != nil {
+		return fmt.Errorf("can't get server info: %w", err)
+	}
+	req := &reflectpb.ServerReflectionRequest{
+		MessageRequest: &reflectpb.ServerReflectionRequest_ListServices{},
+	}
+	resp, err := sendReceive(methodClient, req)
+	if err != nil {
+		return fmt.Errorf("can't list services: %w", err)
+	}
+	listResp := resp.GetListServicesResponse()
+	if listResp == nil {
+		return fmt.Errorf("can't list services, nil response")
+	}
+	fdset, err := resolveServiceFileDescriptors(methodClient, listResp)
+	if err != nil {
+		return fmt.Errorf("can't resolve services' file descriptors: %w", err)
+	}
+	_, err = c.convertToMethodInfo(fdset)
+	if err != nil {
+		err = fmt.Errorf("can't convert method info: %w", err)
+	}
+	return err
+}
+
+type fileDescriptorLookupKey struct {
+	Package string
+	Name    string
+}
+
+func resolveServiceFileDescriptors(
+	client sendReceiver,
+	res *reflectpb.ListServiceResponse,
+) (*descriptorpb.FileDescriptorSet, error) {
+	services := res.GetService()
+	seen := make(map[fileDescriptorLookupKey]bool, len(services))
+	fdset := &descriptorpb.FileDescriptorSet{
+		File: make([]*descriptorpb.FileDescriptorProto, 0, len(services)),
+	}
+
+	for _, service := range services {
+		req := &reflectpb.ServerReflectionRequest{
+			MessageRequest: &reflectpb.ServerReflectionRequest_FileContainingSymbol{
+				FileContainingSymbol: service.GetName(),
+			},
+		}
+		resp, err := sendReceive(client, req)
+		if err != nil {
+			return nil, fmt.Errorf("can't get method on service %q: %w", service, err)
+		}
+		fdResp := resp.GetFileDescriptorResponse()
+		for _, raw := range fdResp.GetFileDescriptorProto() {
+			var fdp descriptorpb.FileDescriptorProto
+			if err = proto.Unmarshal(raw, &fdp); err != nil {
+				return nil, fmt.Errorf("can't unmarshal proto on service %q: %w", service, err)
+			}
+			fdkey := fileDescriptorLookupKey{
+				Package: *fdp.Package,
+				Name:    *fdp.Name,
+			}
+			if seen[fdkey] {
+				// When a proto file contains declarations for multiple services
+				// then the same proto file is returned multiple times,
+				// this prevents adding the returned proto file as a duplicate.
+				continue
+			}
+			seen[fdkey] = true
+			fdset.File = append(fdset.File, &fdp)
+		}
+	}
+	return fdset, nil
+}
+
+// sendReceiver is a smaller interface for decoupling
+// from `reflectpb.ServerReflection_ServerReflectionInfoClient`,
+// that has the dependency from `grpc.ClientStream`,
+// which is too much in the case the requirement is to just make a reflection's request.
+// It makes the API more restricted and with a controlled surface,
+// in this way the testing should be easier also.
+type sendReceiver interface {
+	Send(*reflectpb.ServerReflectionRequest) error
+	Recv() (*reflectpb.ServerReflectionResponse, error)
+}
+
+// sendReceive sends a request to a reflection client and,
+// receives a response.
+func sendReceive(
+	client sendReceiver,
+	req *reflectpb.ServerReflectionRequest,
+) (*reflectpb.ServerReflectionResponse, error) {
+	if err := client.Send(req); err != nil {
+		return nil, fmt.Errorf("can't send request: %w", err)
+	}
+	resp, err := client.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("can't receive response: %w", err)
+	}
+	return resp, nil
+}
+
+type statsHandler struct {
+	vu modules.VU
+}
+
 // TagConn implements the stats.Handler interface
-func (*Client) TagConn(ctx context.Context, _ *grpcstats.ConnTagInfo) context.Context {
+func (statsHandler) TagConn(ctx context.Context, _ *grpcstats.ConnTagInfo) context.Context {
 	// noop
 	return ctx
 }
 
 // HandleConn implements the stats.Handler interface
-func (*Client) HandleConn(context.Context, grpcstats.ConnStats) {
+func (statsHandler) HandleConn(context.Context, grpcstats.ConnStats) {
 	// noop
 }
 
 // TagRPC implements the stats.Handler interface
-func (*Client) TagRPC(ctx context.Context, _ *grpcstats.RPCTagInfo) context.Context {
+func (statsHandler) TagRPC(ctx context.Context, _ *grpcstats.RPCTagInfo) context.Context {
 	// noop
 	return ctx
 }
 
 // HandleRPC implements the stats.Handler interface
-func (c *Client) HandleRPC(ctx context.Context, stat grpcstats.RPCStats) {
-	state := c.vu.State()
+func (h statsHandler) HandleRPC(ctx context.Context, stat grpcstats.RPCStats) {
+	state := h.vu.State()
 	tags := getTags(ctx)
 	switch s := stat.(type) {
 	case *grpcstats.OutHeader:
