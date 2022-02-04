@@ -22,7 +22,9 @@ package js
 
 import (
 	"context"
+	"encoding/json"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/dop251/goja"
@@ -62,7 +64,20 @@ func (c console) log(ctx *context.Context, level logrus.Level, msgobj goja.Value
 		}
 	}
 
-	msg := msgobj.String()
+	var msg string
+	switch msgobj.ExportType().Kind() { //nolint:exhaustive
+	case reflect.Map:
+		b, err := json.Marshal(msgobj.Export())
+		if err == nil {
+			msg = string(b)
+			break
+		}
+		// fallback on default in case of marshal error
+		fallthrough
+	default:
+		msg = msgobj.String()
+	}
+
 	if len(args) > 0 {
 		strs := make([]string, 1+len(args))
 		strs[0] = msg
@@ -72,6 +87,7 @@ func (c console) log(ctx *context.Context, level logrus.Level, msgobj goja.Value
 
 		msg = strings.Join(strs, " ")
 	}
+
 	switch level { //nolint:exhaustive
 	case logrus.DebugLevel:
 		c.logger.Debug(msg)

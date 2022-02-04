@@ -134,7 +134,8 @@ func TestConsole(t *testing.T) {
 		`"string"`:         {Message: "string", Data: logrus.Fields{"source": "console"}},
 		`"string","a","b"`: {Message: "string a b", Data: logrus.Fields{"source": "console"}},
 		`"string",1,2`:     {Message: "string 1 2", Data: logrus.Fields{"source": "console"}},
-		`{}`:               {Message: "[object Object]", Data: logrus.Fields{"source": "console"}},
+		`{}`:               {Message: "{}", Data: logrus.Fields{"source": "console"}},
+		`{foo:"bar"}`:      {Message: `{"foo":"bar"}`, Data: logrus.Fields{"source": "console"}},
 	}
 	for name, level := range levels {
 		name, level := name, level
