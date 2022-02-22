@@ -3,7 +3,6 @@ package js
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/dop251/goja"
 	"go.k6.io/k6/js/modules"
@@ -44,7 +43,6 @@ func newEventLoop(vu modules.VU) *eventLoop {
 		vu:                       vu,
 	}
 	vu.Runtime().SetPromiseRejectionTracker(e.promiseRejectionTracker)
-	e.addSetTimeout()
 
 	return e
 }
@@ -143,27 +141,4 @@ func (e *eventLoop) waitOnRegistered() {
 		}
 		<-e.wakeupCh
 	}
-}
-
-func (e *eventLoop) addSetTimeout() {
-	_ = e.vu.Runtime().Set("setTimeout", func(f goja.Callable, t float64) {
-		// TODO maybe really return something to use with `clearTimeout
-		// TODO support arguments ... maybe
-		runOnLoop := e.registerCallback()
-		go func() {
-			timer := time.NewTimer(time.Duration(t * float64(time.Millisecond)))
-			select {
-			case <-timer.C:
-				runOnLoop(func() error {
-					_, err := f(goja.Undefined())
-					return err
-				})
-			case <-e.vu.Context().Done():
-				// TODO log something?
-
-				timer.Stop()
-				runOnLoop(func() error { return nil })
-			}
-		}()
-	})
 }
