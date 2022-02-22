@@ -25,7 +25,8 @@ func TestBasicEventLoop(t *testing.T) {
 	require.Equal(t, 2, ran)
 	require.Error(t, loop.start(func() error {
 		_ = f()
-		loop.registerCallback()(f)
+		register, _ := loop.registerCallback()
+		register(f)
 		return errors.New("something")
 	}))
 	require.Equal(t, 3, ran)
@@ -37,7 +38,7 @@ func TestEventLoopRegistered(t *testing.T) {
 	var ran int
 	f := func() error {
 		ran++
-		r := loop.registerCallback()
+		r, _ := loop.registerCallback()
 		go func() {
 			time.Sleep(time.Second)
 			r(func() error {
@@ -61,7 +62,7 @@ func TestEventLoopWaitOnRegistered(t *testing.T) {
 	loop := newEventLoop(&modulestest.VU{RuntimeField: goja.New()})
 	f := func() error {
 		ran++
-		r := loop.registerCallback()
+		r, _ := loop.registerCallback()
 		go func() {
 			time.Sleep(time.Second)
 			r(func() error {
@@ -89,7 +90,7 @@ func TestEventLoopReuse(t *testing.T) {
 	f := func() error {
 		for i := 0; i < 100; i++ {
 			bad := i == 17
-			r := loop.registerCallback()
+			r, _ := loop.registerCallback()
 
 			go func() {
 				if !bad {

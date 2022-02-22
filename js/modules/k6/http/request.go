@@ -85,7 +85,7 @@ func (c *Client) Request(method string, url goja.Value, args ...goja.Value) (*Re
 		return &Response{Response: r, client: c}, nil
 	}
 	if callback != nil {
-		callbackF := c.moduleInstance.vu.RegisterCallback()
+		callbackF, _ := c.moduleInstance.vu.RegisterCallback()
 		go func() {
 			resp, err := httpext.MakeRequest(c.moduleInstance.vu.Context(), state, req) //nolint:govet
 			if err != nil {

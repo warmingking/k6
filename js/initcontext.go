@@ -180,7 +180,7 @@ func (m *moduleVUImpl) Runtime() *goja.Runtime {
 	return m.runtime
 }
 
-func (m *moduleVUImpl) RegisterCallback() func(func() error) {
+func (m *moduleVUImpl) RegisterCallback() (runOnLoop func(func() error), cancel func()) {
 	return m.eventLoop.registerCallback()
 }
 

@@ -53,8 +53,6 @@ func (mi *Events) Exports() modules.Exports {
 	}
 }
 
-func (_ *Events) noop() error { return nil }
-
 func (e *Events) getTimerStopCh() (uint32, chan struct{}) {
 	id := atomic.AddUint32(&e.timerStopCounter, 1)
 	ch := make(chan struct{})
@@ -83,7 +81,7 @@ func (e *Events) call(callback goja.Callable, args []goja.Value) error {
 }
 
 func (e *Events) setTimeout(callback goja.Callable, delay float64, args ...goja.Value) uint32 {
-	runOnLoop := e.vu.RegisterCallback()
+	runOnLoop, cancel := e.vu.RegisterCallback()
 	id, stopCh := e.getTimerStopCh()
 
 	if delay < 0 {
@@ -97,6 +95,7 @@ func (e *Events) setTimeout(callback goja.Callable, delay float64, args ...goja.
 			if !timer.Stop() {
 				<-timer.C
 			}
+			cancel()
 		}()
 
 		select {
@@ -105,10 +104,8 @@ func (e *Events) setTimeout(callback goja.Callable, delay float64, args ...goja.
 				return e.call(callback, args)
 			})
 		case <-stopCh:
-			runOnLoop(e.noop)
 		case <-e.vu.Context().Done():
 			e.vu.State().Logger.Warnf("setTimeout %d was stopped because the VU iteration was interrupted", id)
-			runOnLoop(e.noop)
 		}
 	}()
 
@@ -120,7 +117,7 @@ func (e *Events) clearTimeout(id uint32) {
 }
 
 func (e *Events) setInterval(callback goja.Callable, delay float64, args ...goja.Value) uint32 {
-	runOnLoop := e.vu.RegisterCallback()
+	runOnLoop, cancel := e.vu.RegisterCallback()
 	id, stopCh := e.getTimerStopCh()
 
 	go func() {
@@ -128,21 +125,20 @@ func (e *Events) setInterval(callback goja.Callable, delay float64, args ...goja
 		defer func() {
 			e.stopTimerCh(id)
 			ticker.Stop()
+			cancel()
 		}()
 
 		for {
 			select {
 			case <-ticker.C:
 				runOnLoop(func() error {
-					runOnLoop = e.vu.RegisterCallback()
+					runOnLoop, cancel = e.vu.RegisterCallback()
 					return e.call(callback, args)
 				})
 			case <-stopCh:
-				runOnLoop(e.noop)
 				return
 			case <-e.vu.Context().Done():
 				e.vu.State().Logger.Warnf("setInterval %d was stopped because the VU iteration was interrupted", id)
-				runOnLoop(e.noop)
 				return
 			}
 		}

@@ -58,18 +58,33 @@ func (e *eventLoop) wakeup() {
 // The returned function, upon invocation, will queue it's argument and wakeup the loop if needed.
 // If the eventLoop has since stopped, it will not be executed.
 // This function *must* be called from within running on the event loop, but its result can be called from anywhere
-func (e *eventLoop) registerCallback() func(func() error) {
+func (e *eventLoop) registerCallback() (func(func() error), func()) {
 	e.lock.Lock()
 	e.registeredCallbacks++
 	e.lock.Unlock()
 
-	return func(f func() error) {
-		e.lock.Lock()
-		e.queue = append(e.queue, f)
-		e.registeredCallbacks--
-		e.lock.Unlock()
-		e.wakeup()
+	var once sync.Once
+
+	runOnLoop := func(f func() error) {
+		once.Do(func() {
+			e.lock.Lock()
+			e.queue = append(e.queue, f)
+			e.registeredCallbacks--
+			e.lock.Unlock()
+			e.wakeup()
+		})
 	}
+
+	cancel := func() {
+		once.Do(func() {
+			e.lock.Lock()
+			e.registeredCallbacks--
+			e.lock.Unlock()
+			e.wakeup()
+		})
+	}
+
+	return runOnLoop, cancel
 }
 
 func (e *eventLoop) promiseRejectionTracker(p *goja.Promise, op goja.PromiseRejectionOperation) {

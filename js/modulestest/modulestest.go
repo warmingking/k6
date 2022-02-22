@@ -60,7 +60,7 @@ func (m *VU) Runtime() *goja.Runtime {
 }
 
 // RegisterCallback is not really implemented
-func (m *VU) RegisterCallback() func(f func() error) {
+func (m *VU) RegisterCallback() (runOnLoop func(f func() error), cancel func()) {
 	// TODO Implement
-	return nil
+	return nil, nil
 }
