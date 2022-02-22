@@ -146,7 +146,7 @@ func (e *eventLoop) waitOnRegistered() {
 }
 
 func (e *eventLoop) addSetTimeout() {
-	_ = e.vu.Runtime().Set("setTimeout", func(f func() error, t float64) {
+	_ = e.vu.Runtime().Set("setTimeout", func(f goja.Callable, t float64) {
 		// TODO maybe really return something to use with `clearTimeout
 		// TODO support arguments ... maybe
 		runOnLoop := e.registerCallback()
@@ -154,7 +154,10 @@ func (e *eventLoop) addSetTimeout() {
 			timer := time.NewTimer(time.Duration(t * float64(time.Millisecond)))
 			select {
 			case <-timer.C:
-				runOnLoop(f)
+				runOnLoop(func() error {
+					_, err := f(goja.Undefined())
+					return err
+				})
 			case <-e.vu.Context().Done():
 				// TODO log something?
 
