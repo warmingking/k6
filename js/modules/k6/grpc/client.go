@@ -46,6 +46,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 
@@ -183,6 +184,9 @@ func (c *Client) convertToMethodInfo(fdset *descriptorpb.FileDescriptorSet) ([]M
 		})
 	}
 	files.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if err := c.registerMessage(fd.Messages()); err != nil {
+			return false
+		}
 		sds := fd.Services()
 		for i := 0; i < sds.Len(); i++ {
 			sd := sds.Get(i)
@@ -195,6 +199,24 @@ func (c *Client) convertToMethodInfo(fdset *descriptorpb.FileDescriptorSet) ([]M
 		return true
 	})
 	return rtn, nil
+}
+
+func (c *Client) registerMessage(mds protoreflect.MessageDescriptors) error {
+	for i := 0; i < mds.Len(); i++ {
+		md := mds.Get(i)
+		_, err := protoregistry.GlobalTypes.FindMessageByName(md.FullName())
+		if err == protoregistry.NotFound {
+			if err := protoregistry.GlobalTypes.RegisterMessage(dynamicpb.NewMessageType(md)); err != nil {
+				return err
+			}
+		}
+
+		if err := c.registerMessage(md.Messages()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 type transportCreds struct {
